@@ -1,0 +1,7 @@
+# Pontoon likes each locale to have a directory. But importlib requires
+# "__init.py__" in every directory we want to read files from. So we
+# tell Pontoon locale paths are flat files, not directories.
+
+[[paths]]
+  reference = "cjwparse/i18n/messages.pot"
+  l10n = "cjwparse/i18n/{locale}.po"
