@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2020-03-03 15:33-0500\n"
+"POT-Creation-Date: 2020-03-04 10:09-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: el\n"
@@ -19,11 +19,31 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.8.0\n"
 
-#: api.py:49
+#: api.py:51
 msgid "parse_file.unknown_ext"
 msgstr ""
 
-#: csv.py:35
-msgid "skipped_rows"
+#: csv.py:44
+msgid "warning.skipped_rows"
+msgstr ""
+
+#: csv.py:56
+msgid "warning.skipped_columns"
+msgstr ""
+
+#: csv.py:72
+msgid "warning.truncated_values"
+msgstr ""
+
+#: csv.py:88
+msgid "warning.csv.fixed_quotes"
+msgstr ""
+
+#: csv.py:96
+msgid "warning.csv.fixed_eof"
+msgstr ""
+
+#: csv.py:400
+msgid "csv.truncated_file"
 msgstr ""
 

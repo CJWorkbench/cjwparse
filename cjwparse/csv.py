@@ -5,275 +5,137 @@ import os
 import re
 import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
-from typing import List, NamedTuple, Optional, Tuple
-
-from cjwmodule.i18n import I18nMessage
-from cjwmodule.util.colnames import gen_unique_clean_colnames
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Pattern, Tuple
 
 import pyarrow
+from cjwmodule.i18n import I18nMessage
+from cjwmodule.util.colnames import gen_unique_clean_colnames_and_warn
 
 from . import settings
 from ._util import tempfile_context
 from .i18n import _trans_cjwparse
 from .postprocess import dictionary_encode_columns
+from .settings import Settings
 from .text import transcode_to_utf8_and_warn
 
 
-class ParseCsvWarning:
-    def to_i18n(self):
-        return I18nMessage("TODO_i18n", {"text": str(self)}, source=None)
+class ErrorPattern(NamedTuple):
+    pattern: Pattern
+    # `Callable` so each one can call `_trans_cjwparse()` -- which marks strings
+    # for translations.
+    message: Callable[[Dict[str, Any]], I18nMessage]
 
 
-@dataclass(frozen=True)
-class ParseCsvWarningSkippedRows(ParseCsvWarning):
-    n_rows_skipped: int
-    max_n_rows: int
-
-    def to_i18n(self):
-        return _trans_cjwparse(
-            "skipped_rows",
-            "Skipped {n_rows} rows (after limit of {max_n_rows})",
-            arguments={"n_rows": self.n_rows_skipped, "max_n_rows": self.max_n_rows},
-        )
+class ParseCsvResult(NamedTuple):
+    table: pyarrow.Table
+    warnings: List[I18nMessage]
 
 
-@dataclass(frozen=True)
-class ParseCsvWarningSkippedColumns(ParseCsvWarning):
-    n_columns_skipped: int
-    max_n_columns: int
-
-    def __str__(self):  # TODO nix when we support i18n
-        return "Skipped %d columns (after limit of %d)" % (
-            self.n_columns_skipped,
-            self.max_n_columns,
-        )
-
-
-@dataclass(frozen=True)
-class ParseCsvWarningTruncatedValues(ParseCsvWarning):
-    n_values_truncated: int
-    max_bytes_per_value: int
-    first_value_row: int
-    first_value_column: int
-
-    def __str__(self):  # TODO nix when we support i18n
-        return "Truncated %d values (to %d bytes each; see row %d column %d)" % (
-            self.n_values_truncated,
-            self.max_bytes_per_value,
-            self.first_value_row,
-            self.first_value_column,
-        )
-
-
-@dataclass(frozen=True)
-class ParseCsvWarningCleanedAsciiColumnNames(ParseCsvWarning):
-    n_names: int
-    first_name: str
-
-    def __str__(self):  # TODO nix when we support i18n
-        return ("Removed special characters from %d column names (see “%s”)") % (
-            self.n_names,
-            self.first_name,
-        )
-
-
-@dataclass(frozen=True)
-class ParseCsvWarningNumberedColumnNames(ParseCsvWarning):
-    n_names: int
-    first_name: str
-
-    def __str__(self):  # TODO nix when we support i18n
-        return "Renamed %d duplicate column names (see “%s”)" % (
-            self.n_names,
-            self.first_name,
-        )
-
-
-@dataclass(frozen=True)
-class ParseCsvWarningTruncatedColumnNames(ParseCsvWarning):
-    n_names: int
-    first_name: str
-
-    def __str__(self):  # TODO nix when we support i18n
-        return "Truncated %d column names (to %d bytes each; see “%s”)" % (
-            self.n_names,
-            settings.MAX_BYTES_PER_COLUMN_NAME,
-            self.first_name,
-        )
-
-
-@dataclass(frozen=True)
-class ParseCsvWarningRepairedValues(ParseCsvWarning):
-    n_values_repaired: int
-    first_value_row: int
-    first_value_column: int
-
-    def __str__(self):  # TODO nix when we support i18n
-        return (
-            "Repaired %d values which misused quotation marks (see row %d column %d)"
-            % (self.n_values_repaired, self.first_value_row, self.first_value_column)
-        )
+_ERROR_PATTERNS = [
+    ErrorPattern(
+        re.compile(
+            r"^skipped (?P<n_rows>\d+) rows \(after row limit of (?P<max_n_rows>\d+)\)$"
+        ),
+        (
+            lambda n_rows, max_n_rows: _trans_cjwparse(
+                "warning.skipped_rows",
+                "Skipped {n_rows} rows (after row limit of {max_n_rows})",
+                dict(n_rows=int(n_rows), max_n_rows=int(max_n_rows)),
+            )
+        ),
+    ),
+    ErrorPattern(
+        re.compile(
+            r"^skipped (?P<n_columns>\d+) columns \(after column limit of (?P<max_n_columns>\d+)\)$"
+        ),
+        (
+            lambda n_columns, max_n_columns: _trans_cjwparse(
+                "warning.skipped_columns",
+                "Skipped {n_columns} columns (after column limit of {max_n_columns})",
+                dict(n_columns=int(n_columns), max_n_columns=int(max_n_columns)),
+            )
+        ),
+    ),
+    ErrorPattern(
+        re.compile(
+            r"^truncated (?P<n_values>\d+) values \(value byte limit is (?P<max_n_bytes_per_value>\d+); see row (?P<row_number>\d+) column (?P<column_number>\d+)\)$"
+        ),
+        (
+            lambda n_values, max_n_bytes_per_value, row_number, column_number: _trans_cjwparse(
+                "warning.truncated_values",
+                "Truncated {n_values} values (value byte limit is {max_n_bytes}; see row {row_number} column {column_number})",
+                dict(
+                    n_values=int(n_values),
+                    max_n_bytes_per_value=int(max_n_bytes_per_value),
+                    row_number=int(row_number),
+                    column_number=int(column_number),
+                ),
+            )
+        ),
+    ),
+    ErrorPattern(
+        re.compile(
+            r"^repaired (?P<n_values>\d+) values \(misplaced quotation marks; see row (P<row_number>\d+) column (<column_number>\d+)\)$"
+        ),
+        (
+            lambda n_values, row_number, column_number: _trans_cjwparse(
+                "warning.csv.fixed_quotes",
+                "Repaired {n_values} values (misplaced quotation marks; see row {row_number} column {column_number})",
+                dict(
+                    n_values=int(n_values),
+                    row_number=int(row_number),
+                    column_number=int(column_number),
+                ),
+            )
+        ),
+    ),
+    ErrorPattern(
+        re.compile("^repaired last value \(missing quotation mark\)$"),
+        (
+            lambda: _trans_cjwparse(
+                "warning.csv.fixed_eof", "Repaired last value (missing quotation mark)"
+            )
+        ),
+    ),
+]
 
 
-@dataclass(frozen=True)
-class ParseCsvWarningRepairedEndOfFile(ParseCsvWarning):
-    def __str__(self):  # TODO nix when we support i18n
-        return "Inserted missing quotation mark at end of file"
-
-
-@dataclass(frozen=True)
-class ParseCsvWarningTruncatedFile(ParseCsvWarning):
-    original_n_bytes: int
-    max_n_bytes: int
-
-    def __str__(self):  # TODO nix when we support i18n
-        return "Truncated %d bytes from file (maximum is %d bytes)" % (
-            self.original_n_bytes - self.max_n_bytes,
-            self.max_n_bytes,
-        )
-
-
-@dataclass(frozen=True)
-class ParseCsvWarningRepairedEncoding(ParseCsvWarning):
-    encoding: str
-    first_invalid_byte: int
-    first_invalid_byte_position: int
-
-    def __str__(self):  # TODO nix when we support i18n
-        return (
-            "Encoding error: byte 0x%02X is invalid %s at byte %d. "
-            "We replaced invalid bytes with “�”."
-        ) % (self.first_invalid_byte, self.encoding, self.first_invalid_byte_position)
-
-
-ParseCsvWarning.RepairedEndOfFile = ParseCsvWarningRepairedEndOfFile
-ParseCsvWarning.RepairedEncoding = ParseCsvWarningRepairedEncoding
-ParseCsvWarning.RepairedValues = ParseCsvWarningRepairedValues
-ParseCsvWarning.SkippedColumns = ParseCsvWarningSkippedColumns
-ParseCsvWarning.SkippedRows = ParseCsvWarningSkippedRows
-ParseCsvWarning.TruncatedFile = ParseCsvWarningTruncatedFile
-ParseCsvWarning.TruncatedValues = ParseCsvWarningTruncatedValues
-ParseCsvWarning.CleanedAsciiColumnNames = ParseCsvWarningCleanedAsciiColumnNames
-ParseCsvWarning.NumberedColumnNames = ParseCsvWarningNumberedColumnNames
-ParseCsvWarning.TruncatedColumnNames = ParseCsvWarningTruncatedColumnNames
-
-
-_PATTERN_SKIPPED_ROWS = re.compile(r"^skipped (\d+) rows \(after row limit of (\d+)\)$")
-_PATTERN_SKIPPED_COLUMNS = re.compile(
-    r"^skipped (\d+) columns \(after column limit of (\d+)\)$"
-)
-_PATTERN_TRUNCATED_VALUES = re.compile(
-    r"^truncated (\d+) values \(value byte limit is (\d+); see row (\d+) column (\d+)\)$"
-)
-_PATTERN_REPAIRED_VALUES = re.compile(
-    r"^repaired (\d+) values \(misplaced quotation marks; see row (\d+) column (\d+)\)$"
-)
-_PATTERN_REPAIRED_END_OF_FILE = re.compile(
-    r"^repaired last value \(missing quotation mark\)$"
-)
-
-
-def _parse_csv_to_arrow_warning(line: str) -> ParseCsvWarning:
+def _parse_csv_to_arrow_warning(line: str) -> I18nMessage:
     """
     Parse a single line of csv-to-arrow output.
 
     Raise RuntimeError if a line cannot be parsed. (We can't recover from that
     because we don't know what's happening.)
     """
-    m = _PATTERN_SKIPPED_ROWS.match(line)
-    if m is not None:
-        return ParseCsvWarning.SkippedRows(
-            n_rows_skipped=int(m.group(1)), max_n_rows=int(m.group(2))
-        )
-    m = _PATTERN_SKIPPED_COLUMNS.match(line)
-    if m is not None:
-        return ParseCsvWarning.SkippedColumns(
-            n_columns_skipped=int(m.group(1)), max_n_columns=int(m.group(2))
-        )
-    m = _PATTERN_TRUNCATED_VALUES.match(line)
-    if m is not None:
-        return ParseCsvWarning.TruncatedValues(
-            n_values_truncated=int(m.group(1)),
-            max_bytes_per_value=int(m.group(2)),
-            first_value_row=int(m.group(3)),
-            first_value_column=int(m.group(4)),
-        )
-    m = _PATTERN_REPAIRED_VALUES.match(line)
-    if m is not None:
-        return ParseCsvWarning.RepairedValues(
-            n_values_repaired=int(m.group(1)),
-            first_value_row=int(m.group(2)),
-            first_value_column=int(m.group(3)),
-        )
-    m = _PATTERN_REPAIRED_END_OF_FILE.match(line)
-    if m is not None:
-        return ParseCsvWarning.RepairedEndOfFile()
+    for pattern, builder in _ERROR_PATTERNS:
+        match = pattern.match(line)
+        if match:
+            return builder(**match)
     raise RuntimeError("Could not parse csv-to-arrow output line: %r" % line)
 
 
-def _parse_csv_to_arrow_warnings(text: str) -> List[ParseCsvWarning]:
+def _parse_csv_to_arrow_warnings(text: str) -> List[I18nMessage]:
     return [_parse_csv_to_arrow_warning(line) for line in text.split("\n") if line]
 
 
 def _postprocess_name_columns(
-    table: pyarrow.Table, has_header: bool
-) -> Tuple[pyarrow.Table, List[ParseCsvWarning]]:
+    table: pyarrow.Table, has_header: bool, settings: Settings
+) -> Tuple[pyarrow.Table, List[I18nMessage]]:
     """
     Return `table`, with final column names but still String values.
     """
-    warnings = []
     if has_header and table.num_rows > 0:
-        n_ascii_cleaned = 0
-        first_ascii_cleaned = None
-        n_truncated = 0
-        first_truncated = None
-        n_numbered = 0
-        first_numbered = None
-
-        names = []
-        for colname in gen_unique_clean_colnames(
+        new_names, warnings = gen_unique_clean_colnames_and_warn(
             list(("" if c[0] is pyarrow.NULL else c[0].as_py()) for c in table.columns),
             settings=settings,
-        ):
-            names.append(colname.name)
-            if colname.is_ascii_cleaned:
-                if n_ascii_cleaned == 0:
-                    first_ascii_cleaned = colname.name
-                n_ascii_cleaned += 1
-            if colname.is_truncated:
-                if n_truncated == 0:
-                    first_truncated = colname.name
-                n_truncated += 1
-            if colname.is_numbered:
-                if n_numbered == 0:
-                    first_numbered = colname.name
-                n_numbered += 1
-            # Unicode can't be fixed, because we assume valid UTF-8 input
-            assert not colname.is_unicode_fixed
-            # Stay silent if colname.is_default. Users expect us to
-            # auto-generate default column names.
-
-        if n_ascii_cleaned:
-            warnings.append(
-                ParseCsvWarning.CleanedAsciiColumnNames(
-                    n_ascii_cleaned, first_ascii_cleaned
-                )
-            )
-        if n_truncated:
-            warnings.append(
-                ParseCsvWarning.TruncatedColumnNames(n_truncated, first_truncated)
-            )
-        if n_numbered:
-            warnings.append(
-                ParseCsvWarning.NumberedColumnNames(n_numbered, first_numbered)
-            )
+        )
 
         # Remove header (zero-copy: builds new pa.Table with same backing data)
         table = table.slice(1)
     else:
         names = [f"Column {i + 1}" for i in range(len(table.columns))]
+        warnings = []
 
     return (
         pyarrow.table({name: table.column(i) for i, name in enumerate(names)}),
@@ -450,8 +312,11 @@ def _postprocess_autocast_columns(table: pyarrow.Table) -> pyarrow.Table:
 
 
 def _postprocess_table(
-    table: pyarrow.Table, has_header: bool, autoconvert_text_to_numbers: bool
-) -> Tuple[pyarrow.Table, List[ParseCsvWarning]]:
+    table: pyarrow.Table,
+    has_header: bool,
+    autoconvert_text_to_numbers: bool,
+    settings: Settings,
+) -> Tuple[pyarrow.Table, List[I18nMessage]]:
     """
     Transform `raw_table` to meet our standards:
 
@@ -466,7 +331,7 @@ def _postprocess_table(
       `settings.MAX_DICTIONARY_PYLIST_N_BYTES` and
       `settings.MIN_DICTIONARY_COMPRESSION_RATIO`.
     """
-    table, warnings = _postprocess_name_columns(table, has_header)
+    table, warnings = _postprocess_name_columns(table, has_header, settings)
     if autoconvert_text_to_numbers:
         table = _postprocess_autocast_columns(table)
     table = dictionary_encode_columns(table)
@@ -486,14 +351,10 @@ def detect_delimiter(path: Path):
     return dialect.delimiter
 
 
-class ParseCsvResult(NamedTuple):
-    table: pyarrow.Table
-    warnings: List[I18nMessage]
-
-
 def _parse_csv(
     path: Path,
     *,
+    settings: Settings,
     encoding: Optional[str],
     delimiter: Optional[str],
     has_header: bool,
@@ -532,22 +393,21 @@ def _parse_csv(
                 os.sendfile(dest.fileno(), src.fileno(), 0, settings.MAX_CSV_BYTES)
             path = truncated_path
             warnings.append(
-                ParseCsvWarning.TruncatedFile(
-                    original_n_bytes=n_bytes, max_n_bytes=settings.MAX_CSV_BYTES
+                _trans_cjwparse(
+                    "csv.truncated_file",
+                    "Truncated {n_bytes_truncated} from file (maximum is {max_n_bytes} bytes)",
+                    dict(
+                        n_bytes_truncated=(n_bytes - settings.MAX_CSV_BYTES),
+                        max_n_bytes=settings.MAX_CSV_BYTES,
+                    ),
                 )
             )
 
         utf8_path = ctx.enter_context(tempfile_context(prefix="utf8-", suffix=".txt"))
         # raises LookupError, UnicodeError
-        transcode_warning = transcode_to_utf8_and_warn(path, utf8_path, encoding)
-        if transcode_warning is not None:
-            warnings.append(
-                ParseCsvWarning.RepairedEncoding(
-                    encoding=transcode_warning.encoding,
-                    first_invalid_byte=transcode_warning.first_invalid_byte,
-                    first_invalid_byte_position=transcode_warning.first_invalid_byte_position,
-                )
-            )
+        warnings.extend(
+            transcode_to_utf8_and_warn(path, utf8_path, encoding, settings=settings)
+        )
 
         # Sniff delimiter
         if not delimiter:
@@ -586,7 +446,7 @@ def _parse_csv(
             raw_table = reader.read_all()  # efficient -- RAM is mmapped
 
     table, more_warnings = _postprocess_table(
-        raw_table, has_header, autoconvert_text_to_numbers
+        raw_table, has_header, autoconvert_text_to_numbers, settings
     )
     return ParseCsvResult(table, warnings + more_warnings)
 
@@ -595,6 +455,7 @@ def parse_csv(
     path: Path,
     *,
     output_path: Path,
+    settings: Settings,
     encoding: Optional[str],
     delimiter: Optional[str],
     has_header: bool,
@@ -603,6 +464,7 @@ def parse_csv(
     result = _parse_csv(
         path,
         encoding=encoding,
+        settings=settings,
         delimiter=delimiter,
         has_header=has_header,
         autoconvert_text_to_numbers=autoconvert_text_to_numbers,

@@ -2,14 +2,13 @@ import subprocess
 from pathlib import Path
 from typing import List, NamedTuple, Optional, Tuple
 
+import pyarrow
 from cjwmodule.i18n import I18nMessage
 from cjwmodule.util.colnames import gen_unique_clean_colnames_and_warn
 
-import pyarrow
-
-from . import settings
 from ._util import tempfile_context
 from .postprocess import dictionary_encode_columns
+from .settings import Settings
 
 
 class ParseResult(NamedTuple):
@@ -18,7 +17,7 @@ class ParseResult(NamedTuple):
 
 
 def _postprocess_table(
-    table: pyarrow.Table, headers_table: Optional[pyarrow.Table]
+    table: pyarrow.Table, headers_table: Optional[pyarrow.Table], settings: Settings
 ) -> Tuple[pyarrow.Table, List[I18nMessage]]:
     """
     Transform `raw_table` to meet our standards:
@@ -44,7 +43,9 @@ def _postprocess_table(
     return table, warnings
 
 
-def _parse_excel(tool: str, path: Path, *, header_rows: str) -> ParseResult:
+def _parse_excel(
+    tool: str, path: Path, *, header_rows: str, settings: Settings
+) -> ParseResult:
     """
     Parse Excel .xlsx or .xls file.
 
@@ -94,7 +95,9 @@ def _parse_excel(tool: str, path: Path, *, header_rows: str) -> ParseResult:
         else:
             maybe_headers_table = None
 
-    table, colname_warnings = _postprocess_table(raw_table, maybe_headers_table)
+    table, colname_warnings = _postprocess_table(
+        raw_table, maybe_headers_table, settings
+    )
     return ParseResult(table, (parse_warnings + colname_warnings))
 
 
@@ -106,22 +109,34 @@ def _write_table(table: pyarrow.Table, output_path: Path) -> None:
 
 
 def _parse_excel_and_write_result(
-    *, tool: str, path: Path, output_path: Path, has_header: bool
+    *, tool: str, path: Path, output_path: Path, has_header: bool, settings: Settings
 ) -> List[I18nMessage]:
     table, warnings = _parse_excel(
-        tool, path, header_rows=("0-1" if has_header else "")
+        tool, path, header_rows=("0-1" if has_header else ""), settings=settings
     )
     _write_table(table, output_path)
     return warnings
 
 
-def parse_xlsx(path: Path, *, output_path: Path, has_header: bool) -> List[I18nMessage]:
+def parse_xlsx(
+    path: Path, *, output_path: Path, settings: Settings, has_header: bool
+) -> List[I18nMessage]:
     return _parse_excel_and_write_result(
-        tool="xlsx-to-arrow", path=path, output_path=output_path, has_header=has_header
+        tool="xlsx-to-arrow",
+        path=path,
+        output_path=output_path,
+        settings=settings,
+        has_header=has_header,
     )
 
 
-def parse_xls(path: Path, *, output_path: Path, has_header: bool) -> List[I18nMessage]:
+def parse_xls(
+    path: Path, *, output_path: Path, settings: Settings, has_header: bool
+) -> List[I18nMessage]:
     return _parse_excel_and_write_result(
-        tool="xls-to-arrow", path=path, output_path=output_path, has_header=has_header
+        tool="xls-to-arrow",
+        path=path,
+        output_path=output_path,
+        settings=settings,
+        has_header=has_header,
     )

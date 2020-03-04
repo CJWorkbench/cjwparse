@@ -3,10 +3,10 @@ import unittest
 from pathlib import Path
 from typing import ContextManager
 
+from cjwmodule.i18n import I18nMessage
 from cjwparse._util import tempfile_context
 from cjwparse.api import parse_file
 from cjwparse.mime import MimeType
-from cjwparse.testing.i18n import cjwparse_i18n_message
 
 from .util import assert_arrow_table_equals
 
@@ -123,7 +123,7 @@ class ApiTests(unittest.TestCase):
             result = parse_file(bin_path, output_path=self.output_path)
         assert_arrow_table_equals(result.table, {})
         self.assertEqual(
-            result.warnings, [cjwparse_i18n_message("invalid-ext", {"ext": ".bin"})]
+            result.warnings, [I18nMessage("invalid-ext", {"ext": ".bin"}, "cjwparse")]
         )
 
     def test_mime_type_overrides_suffix(self):

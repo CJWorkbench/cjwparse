@@ -3,17 +3,16 @@ import io
 from pathlib import Path
 from typing import List, Optional
 
+import cchardet as chardet
 from cjwmodule.i18n import I18nMessage
 
-import cchardet as chardet
-
-from ... import settings
 from .i18n import _cjwparse_trans
+from .settings import Settings
 
 UNICODE_BOM = "\uFFFE"
 
 
-def detect_encoding(bytesio: io.BytesIO) -> str:
+def detect_encoding(bytesio: io.BytesIO, *, settings: Settings) -> str:
     """
     Detect charset, as Python-friendly encoding string.
 
@@ -45,7 +44,7 @@ def detect_encoding(bytesio: io.BytesIO) -> str:
 
 
 def transcode_to_utf8_and_warn(
-    src: Path, dest: Path, encoding: Optional[str]
+    src: Path, dest: Path, encoding: Optional[str], *, settings: Settings
 ) -> List[I18nMessage]:
     """
     Transcode `dest` to UTF-8 if it has a different encoding.
@@ -65,7 +64,7 @@ def transcode_to_utf8_and_warn(
 
     with src.open("rb") as src_f, dest.open("wb") as dest_f:
         if encoding is None:
-            encoding = detect_encoding(src_f)
+            encoding = detect_encoding(src_f, settings=settings)
 
         # Start with a `strict` decoder. Judging by codecs.py's innards,
         # we're allowed to change .errors later if we run into an error.

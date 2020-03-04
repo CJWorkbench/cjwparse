@@ -2,10 +2,8 @@ import unittest
 from pathlib import Path
 
 from cjwmodule.i18n import I18nMessage
-
 from cjwparse._util import tempfile_context
 from cjwparse.excel import parse_xls, parse_xlsx
-from cjwparse.testing.i18n import cjwparse_i18n_message
 
 from .util import assert_arrow_table_equals
 

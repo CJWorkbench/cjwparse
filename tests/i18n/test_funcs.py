@@ -1,5 +1,4 @@
 from cjwmodule.i18n import I18nMessage
-
 from cjwparse.i18n import _trans_cjwparse
 
 

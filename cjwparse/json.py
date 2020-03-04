@@ -2,17 +2,16 @@ import subprocess
 from pathlib import Path
 from typing import List, NamedTuple, Optional
 
+import pyarrow
 from cjwmodule.i18n import I18nMessage
 
-import pyarrow
-
-from . import settings
 from ._util import tempfile_context
 from .postprocess import dictionary_encode_columns
+from .settings import DEFAULT_SETTINGS, Settings
 from .text import transcode_to_utf8_and_warn
 
 
-def _postprocess_table(table: pyarrow.Table) -> pyarrow.Table:
+def _postprocess_table(table: pyarrow.Table, settings: Settings) -> pyarrow.Table:
     """
     Transform `raw_table` to meet our standards:
 
@@ -20,7 +19,7 @@ def _postprocess_table(table: pyarrow.Table) -> pyarrow.Table:
       `settings.MAX_DICTIONARY_SIZE` and
       `settings.MIN_DICTIONARY_COMPRESSION_RATIO`.
     """
-    table = dictionary_encode_columns(table)
+    table = dictionary_encode_columns(table, settings)
     return table
 
 
@@ -29,7 +28,9 @@ class ParseJsonResult(NamedTuple):
     warnings: List[I18nMessage]
 
 
-def _parse_json(path: Path, *, encoding: Optional[str]) -> ParseJsonResult:
+def _parse_json(
+    path: Path, *, settings: Settings = DEFAULT_SETTINGS, encoding: Optional[str]
+) -> ParseJsonResult:
     """
     Parse JSON text file.
 
@@ -84,14 +85,18 @@ def _parse_json(path: Path, *, encoding: Optional[str]) -> ParseJsonResult:
             reader = pyarrow.ipc.open_file(arrow_path.as_posix())
             raw_table = reader.read_all()  # efficient -- RAM is mmapped
 
-    table = _postprocess_table(raw_table)
+    table = _postprocess_table(raw_table, settings)
     return ParseJsonResult(table, warnings)
 
 
 def parse_json(
-    path: Path, *, output_path: Path, encoding: Optional[str]
+    path: Path,
+    *,
+    output_path: Path,
+    settings: Settings = DEFAULT_SETTINGS,
+    encoding: Optional[str]
 ) -> List[I18nMessage]:
-    table, warnings = _parse_json(path, encoding=encoding)
+    table, warnings = _parse_json(path, encoding=encoding, settings=settings)
     with pyarrow.ipc.RecordBatchFileWriter(
         output_path.as_posix(), schema=table.schema
     ) as writer:

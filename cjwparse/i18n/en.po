@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2020-03-03 15:33-0500\n"
+"POT-Creation-Date: 2020-03-04 10:09-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -19,11 +19,35 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.8.0\n"
 
-#: api.py:49
+#: api.py:51
 msgid "parse_file.unknown_ext"
 msgstr "Unknown file extension {ext}. Please try a different file."
 
-#: csv.py:35
-msgid "skipped_rows"
-msgstr "Skipped {n_rows} rows (after limit of {max_n_rows})"
+#: csv.py:44
+msgid "warning.skipped_rows"
+msgstr "Skipped {n_rows} rows (after row limit of {max_n_rows})"
+
+#: csv.py:56
+msgid "warning.skipped_columns"
+msgstr "Skipped {n_columns} columns (after column limit of {max_n_columns})"
+
+#: csv.py:72
+msgid "warning.truncated_values"
+msgstr ""
+"Truncated {n_values} values (value byte limit is {max_n_bytes}; see row "
+"{row_number} column {column_number})"
+
+#: csv.py:88
+msgid "warning.csv.fixed_quotes"
+msgstr ""
+"Repaired {n_values} values (misplaced quotation marks; see row "
+"{row_number} column {column_number})"
+
+#: csv.py:96
+msgid "warning.csv.fixed_eof"
+msgstr "Repaired last value (missing quotation mark)"
+
+#: csv.py:400
+msgid "csv.truncated_file"
+msgstr "Truncated {n_bytes_truncated} from file (maximum is {max_n_bytes} bytes)"
 

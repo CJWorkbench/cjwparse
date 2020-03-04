@@ -8,6 +8,7 @@ from .excel import parse_xls, parse_xlsx
 from .i18n import _trans_cjwparse
 from .json import parse_json
 from .mime import MimeType
+from .settings import DEFAULT_SETTINGS, Settings
 
 __all__ = [
     "MimeType",
@@ -23,6 +24,7 @@ def parse_file(
     path: Path,
     *,
     output_path: Path,
+    settings: Settings = DEFAULT_SETTINGS,
     encoding: Optional[str] = None,
     mime_type: Optional[MimeType] = None,
     has_header: bool = True,
@@ -63,15 +65,22 @@ def parse_file(
             path,
             output_path=output_path,
             encoding=encoding,
+            settings=settings,
             delimiter=delimiter,
             has_header=has_header,
             autoconvert_text_to_numbers=True,
         )
     elif mime_type == MimeType.JSON:
-        return parse_json(path, output_path=output_path, encoding=encoding)
+        return parse_json(
+            path, output_path=output_path, settings=settings, encoding=encoding
+        )
     elif mime_type == MimeType.XLS:
-        return parse_xls(path, output_path=output_path, has_header=has_header)
+        return parse_xls(
+            path, output_path=output_path, settings=settings, has_header=has_header
+        )
     elif mime_type == MimeType.XLSX:
-        return parse_xlsx(path, output_path=output_path, has_header=has_header)
+        return parse_xlsx(
+            path, output_path=output_path, settings=settings, has_header=has_header
+        )
     else:
         raise RuntimeError("Unhandled MIME type")

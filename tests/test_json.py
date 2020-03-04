@@ -5,8 +5,10 @@ from pathlib import Path
 from typing import Any, ContextManager, Dict, List, Optional, Union
 
 import pyarrow
+from cjwmodule.i18n import I18nMessage
 from cjwparse._util import tempfile_context
 from cjwparse.json import ParseJsonResult, _parse_json
+from cjwparse.settings import Settings
 
 from .util import assert_arrow_table_equals
 
@@ -155,8 +157,11 @@ class ParseJsonTests(unittest.TestCase):
             ParseJsonResult(
                 pyarrow.table({}),
                 [
-                    ParseJsonWarning.TODO_i18n(
-                        'skipped 2 non-Object records; example Array item 0: "foo"'
+                    I18nMessage(
+                        "TODO_i18n",
+                        {
+                            "text": 'skipped 2 non-Object records; example Array item 0: "foo"'
+                        },
                     )
                 ],
             ),
@@ -168,8 +173,11 @@ class ParseJsonTests(unittest.TestCase):
             ParseJsonResult(
                 pyarrow.table({}),
                 [
-                    ParseJsonWarning.TODO_i18n(
-                        'JSON is not an Array or Object containing an Array; got: "foo"'
+                    I18nMessage(
+                        "TODO_i18n",
+                        {
+                            "text": 'JSON is not an Array or Object containing an Array; got: "foo"'
+                        },
                     )
                 ],
             ),
@@ -187,8 +195,9 @@ class ParseJsonTests(unittest.TestCase):
             ParseJsonResult(
                 pyarrow.table({}),
                 [
-                    ParseJsonWarning.TODO_i18n(
-                        "JSON parse error at byte 1: Invalid value."
+                    I18nMessage(
+                        "TODO_i18n",
+                        {"text": "JSON parse error at byte 1: Invalid value."},
                     )
                 ],
             ),
@@ -218,10 +227,14 @@ class ParseJsonTests(unittest.TestCase):
             ParseJsonResult(
                 pyarrow.table({"x": ["caf�"]}),
                 [
-                    ParseJsonWarning.RepairedEncoding(
-                        encoding="utf-8",
-                        first_invalid_byte=233,
-                        first_invalid_byte_position=11,
+                    I18nMessage(
+                        "text.repaired_encoding",
+                        dict(
+                            encoding="utf-8",
+                            first_invalid_byte=233,
+                            first_invalid_byte_position=11,
+                        ),
+                        "cjwparse",
                     )
                 ],
             ),
@@ -248,63 +261,85 @@ class ParseJsonTests(unittest.TestCase):
             ),
         )
 
-    @override_settings(MAX_ROWS_PER_TABLE=2)
     def test_max_rows(self):
         assert_json_result_equals(
-            _parse_json_with_defaults([{"A": "a"}, {"A": "b"}, {"A": "c"}]),
+            _parse_json_with_defaults(
+                [{"A": "a"}, {"A": "b"}, {"A": "c"}],
+                settings=Settings(MAX_ROWS_PER_TABLE=2),
+            ),
             ParseJsonResult(
                 pyarrow.table({"A": ["a", "b"]}),
-                [ParseJsonWarning.TODO_i18n("skipped 1 rows (after row limit of 2)")],
-            ),
-        )
-
-    @override_settings(MAX_COLUMNS_PER_TABLE=2)
-    def test_max_columns(self):
-        assert_json_result_equals(
-            _parse_json_with_defaults(
-                [{"A": "a", "B": "b", "C": "c"}, {"A": "aa", "B": "bb"}]
-            ),
-            ParseJsonResult(
-                pyarrow.table({"A": ["a", "aa"], "B": ["b", "bb"]}),
                 [
-                    ParseJsonWarning.TODO_i18n(
-                        "skipped column C (after column limit of 2)"
+                    I18nMessage(
+                        "TODO_i18n", {"text": "skipped 1 rows (after row limit of 2)"}
                     )
                 ],
             ),
         )
 
-    @override_settings(MAX_BYTES_TEXT_DATA=8)
+    def test_max_columns(self):
+        assert_json_result_equals(
+            _parse_json_with_defaults(
+                [{"A": "a", "B": "b", "C": "c"}, {"A": "aa", "B": "bb"}],
+                settings=Settings(MAX_COLUMNS_PER_TABLE=2),
+            ),
+            ParseJsonResult(
+                pyarrow.table({"A": ["a", "aa"], "B": ["b", "bb"]}),
+                [
+                    I18nMessage(
+                        "TODO_i18n",
+                        {"text": "skipped 1 columns (after column limit of 2)"},
+                    )
+                ],
+            ),
+        )
+
     def test_max_bytes_text(self):
         assert_json_result_equals(
             _parse_json_with_defaults(
-                [{"A": "abcd", "B": "bcde"}, {"A": "c", "B": "def"}]
+                [{"A": "abcd", "B": "bcde"}, {"A": "c", "B": "def"}],
+                settings=Settings(MAX_BYTES_TEXT_DATA=8),
             ),
             ParseJsonResult(
                 pyarrow.table({"A": ["abcd"], "B": ["bcde"]}),
-                [ParseJsonWarning.TODO_i18n("stopped at limit of 8 bytes of data")],
+                [
+                    I18nMessage(
+                        "TODO_i18n", {"text": "stopped at limit of 8 bytes of data"}
+                    )
+                ],
             ),
         )
 
-    @override_settings(MAX_BYTES_PER_COLUMN_NAME=2)
     def test_max_bytes_per_column_name(self):
         assert_json_result_equals(
-            _parse_json_with_defaults([{"ABCD": "x", "BCDEFG": "y"}]),
+            _parse_json_with_defaults(
+                [{"ABCD": "x", "BCDEFG": "y"}],
+                settings=Settings(MAX_BYTES_PER_COLUMN_NAME=2),
+            ),
             ParseJsonResult(
                 pyarrow.table({"AB": ["x"], "BC": ["y"]}),
-                [ParseJsonWarning.TODO_i18n("truncated 2 column names; example AB")],
+                [
+                    I18nMessage(
+                        "TODO_i18n", {"text": "truncated 2 column names; example AB"}
+                    )
+                ],
             ),
         )
 
-    @override_settings(MAX_BYTES_PER_VALUE=3)
     def test_max_bytes_per_value(self):
         assert_json_result_equals(
-            _parse_json_with_defaults([{"A": ["abc", "def"], "B": "ghij"}]),
+            _parse_json_with_defaults(
+                [{"A": ["abc", "def"], "B": "ghij"}],
+                settings=Settings(MAX_BYTES_PER_VALUE=3),
+            ),
             ParseJsonResult(
                 pyarrow.table({"A": ['["a'], "B": ["ghi"]}),
                 [
-                    ParseJsonWarning.TODO_i18n(
-                        "truncated 2 values (value byte limit is 3; see row 0 column A)"
+                    I18nMessage(
+                        "TODO_i18n",
+                        {
+                            "text": "truncated 2 values (value byte limit is 3; see row 0 column A)"
+                        },
                     )
                 ],
             ),

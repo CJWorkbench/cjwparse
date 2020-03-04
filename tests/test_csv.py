@@ -4,8 +4,10 @@ from pathlib import Path
 from typing import ContextManager, Optional, Union
 
 import pyarrow as pa
+from cjwmodule.i18n import I18nMessage
 from cjwparse._util import tempfile_context
 from cjwparse.csv import ParseCsvResult, _parse_csv
+from cjwparse.settings import Settings
 
 from .util import assert_arrow_table_equals
 
@@ -102,14 +104,16 @@ class ParseCsvInternalTests(unittest.TestCase):
                 ParseCsvResult(pa.table({"A": pa.array([1, 2, 3], pa.int8())}), []),
             )
 
-    @override_settings(MAX_DICTIONARY_PYLIST_N_BYTES=0)
     def test_autoconvert_all_empty_is_text(self):
         # A: "a", "a"
         # B: "", ""
         # C: "", null
         with _temp_csv("A,B,C\na,,\na,") as path:
             result = _internal_parse_csv(
-                path, has_header=True, autoconvert_text_to_numbers=True
+                path,
+                has_header=True,
+                autoconvert_text_to_numbers=True,
+                settings=Settings(MAX_DICTIONARY_PYLIST_N_BYTES=0),
             )
             assert_csv_result_equals(
                 result,
@@ -167,7 +171,7 @@ class ParseCsvInternalTests(unittest.TestCase):
                             "Column 5": ["d"],  # rewritten
                         }
                     ),
-                    [ParseCsvWarning.NumberedColumnNames(2, "A 2")],
+                    [I18nMessage("numbered_columns", {}, "cjwmodule")],
                 ),
             )
 
@@ -208,10 +212,14 @@ class ParseCsvInternalTests(unittest.TestCase):
                 ParseCsvResult(
                     pa.table({"A": ["f�o", "caf�"]}),
                     [
-                        ParseCsvWarning.RepairedEncoding(
-                            encoding="utf-8",
-                            first_invalid_byte=244,
-                            first_invalid_byte_position=3,
+                        I18nMessage(
+                            "text.repaired_encoding",
+                            dict(
+                                encoding="utf-8",
+                                first_invalid_byte=244,
+                                first_invalid_byte_position=3,
+                            ),
+                            "cjwparse",
                         )
                     ],
                 ),
@@ -291,7 +299,6 @@ class ParseCsvInternalTests(unittest.TestCase):
                 ),
             )
 
-    @override_settings(MAX_DICTIONARY_PYLIST_N_BYTES=150)
     def test_do_not_dictionary_encode_if_dictionary_is_too_big(self):
         # no_values dictionary will cost ~200 bytes because Python adds overhead
         no_values = ["A" * 49, "B" * 49] * 50
@@ -300,7 +307,11 @@ class ParseCsvInternalTests(unittest.TestCase):
         csv = "\n".join(f"{no},{yes}" for no, yes in zip(no_values, yes_values))
         with _temp_csv(csv) as path:
             assert_csv_result_equals(
-                _internal_parse_csv(path, has_header=False),
+                _internal_parse_csv(
+                    path,
+                    has_header=False,
+                    settings=Settings(MAX_DICTIONARY_PYLIST_N_BYTES=150),
+                ),
                 ParseCsvResult(
                     pa.table(
                         {
@@ -312,14 +323,19 @@ class ParseCsvInternalTests(unittest.TestCase):
                 ),
             )
 
-    @override_settings(MIN_DICTIONARY_COMPRESSION_RATIO_PYLIST_N_BYTES=12)
     def test_only_dictionary_encode_for_big_savings(self):
         no_values = ["A", "B", "C"] * 10  # dictionary would give ~10x savings
         yes_values = ["A", "B"] * 15  # dictionary would give ~15x savings
         csv = "\n".join(f"{no},{yes}" for no, yes in zip(no_values, yes_values))
         with _temp_csv(csv) as path:
             assert_csv_result_equals(
-                _internal_parse_csv(path, has_header=False),
+                _internal_parse_csv(
+                    path,
+                    has_header=False,
+                    settings=Settings(
+                        MIN_DICTIONARY_COMPRESSION_RATIO_PYLIST_N_BYTES=12
+                    ),
+                ),
                 ParseCsvResult(
                     pa.table(
                         {
@@ -331,7 +347,6 @@ class ParseCsvInternalTests(unittest.TestCase):
                 ),
             )
 
-    @override_settings(MAX_BYTES_PER_VALUE=4)
     def test_truncate_values(self):
         with _temp_csv(
             "\n".join(
@@ -352,7 +367,9 @@ class ParseCsvInternalTests(unittest.TestCase):
             )
         ) as path:
             assert_csv_result_equals(
-                _internal_parse_csv(path, has_header=True),
+                _internal_parse_csv(
+                    path, has_header=True, settings=Settings(MAX_BYTES_PER_VALUE=4)
+                ),
                 ParseCsvResult(
                     pa.table(
                         {
@@ -370,7 +387,7 @@ class ParseCsvInternalTests(unittest.TestCase):
                             ]
                         }
                     ),
-                    [ParseCsvWarning.TruncatedValues(7, 4, 0, 0)],
+                    [I18nMessage("truncated_values", [7, 4, 0, 0], "cjwparse")],
                 ),
             )
 
@@ -380,7 +397,7 @@ class ParseCsvInternalTests(unittest.TestCase):
                 _internal_parse_csv(path, has_header=True),
                 ParseCsvResult(
                     pa.table({"A": ["x y"], "B": ['z" a']}),
-                    [ParseCsvWarning.RepairedValues(2, 1, 0)],
+                    [I18nMessage("csv.repaired_values", [2, 1, 0], "cjwparse")],
                 ),
             )
 
@@ -390,7 +407,7 @@ class ParseCsvInternalTests(unittest.TestCase):
                 _internal_parse_csv(path, has_header=True),
                 ParseCsvResult(
                     pa.table({"A": ["x"], "B": ["y\nz"]}),
-                    [ParseCsvWarning.RepairedEndOfFile()],
+                    [I18nMessage("csv.repaired_eof", {}, "cjwparse")],
                 ),
             )
 
@@ -401,51 +418,70 @@ class ParseCsvInternalTests(unittest.TestCase):
                 ParseCsvResult(pa.table({"A": ["a"], "B": ["b"]}), []),
             )
 
-    @override_settings(MAX_ROWS_PER_TABLE=5)
     def test_too_many_rows(self):
         with _temp_csv("A\na\nb\nc\nd\ne\nf\ng") as path:
             assert_csv_result_equals(
-                _internal_parse_csv(path, has_header=True),
+                _internal_parse_csv(
+                    path, has_header=True, settings=Settings(MAX_ROWS_PER_TABLE=5)
+                ),
                 ParseCsvResult(
-                    pa.table({"A": list("abcd")}), [ParseCsvWarning.SkippedRows(3, 5)]
+                    pa.table({"A": list("abcd")}),
+                    [
+                        I18nMessage(
+                            "skipped_rows", dict(n_rows=3, max_n_rows=5), "cjwparse"
+                        )
+                    ],
                 ),
             )
 
-    @override_settings(MAX_COLUMNS_PER_TABLE=2)
     def test_too_many_columns(self):
         with _temp_csv("A,B,C,D,E,F\na,b,c,d,e,f") as path:
             assert_csv_result_equals(
-                _internal_parse_csv(path, has_header=True),
+                _internal_parse_csv(
+                    path, has_header=True, settings=Settings(MAX_COLUMNS_PER_TABLE=2)
+                ),
                 ParseCsvResult(
                     pa.table({"A": ["a"], "B": ["b"]}),
-                    [ParseCsvWarning.SkippedColumns(4, 2)],
+                    [
+                        I18nMessage(
+                            "skipped_columns",
+                            dict(n_columns=4, max_n_columns=2),
+                            "cjwparse",
+                        )
+                    ],
                 ),
             )
 
-    @override_settings(MAX_CSV_BYTES=13)
     def test_truncate_csv(self):
         with _temp_csv("A,B\na,b\nc,d\ne,f\ng,h") as path:
             assert_csv_result_equals(
-                _internal_parse_csv(path, has_header=True),
+                _internal_parse_csv(
+                    path, has_header=True, settings=Settings(MAX_CSV_BYTES=13)
+                ),
                 ParseCsvResult(
                     pa.table({"A": ["a", "c", "e"], "B": ["b", "d", None]}),
-                    [ParseCsvWarning.TruncatedFile(19, 13)],
+                    [I18nMessage("csv.truncated_file", [19, 13], "cjwparse")],
                 ),
             )
 
-    @override_settings(MAX_CSV_BYTES=13)
     def test_truncate_csv_repair_utf8(self):
         with _temp_csv("A,B\na,b\nc,d\né,f\ng,h") as path:
             assert_csv_result_equals(
-                _internal_parse_csv(path, has_header=True),
+                _internal_parse_csv(
+                    path, has_header=True, settings=Settings(MAX_CSV_BYTES=13)
+                ),
                 ParseCsvResult(
                     pa.table({"A": ["a", "c", "�"], "B": ["b", "d", None]}),
                     [
-                        ParseCsvWarning.TruncatedFile(20, 13),
-                        ParseCsvWarning.RepairedEncoding(
-                            encoding="utf-8",
-                            first_invalid_byte=195,
-                            first_invalid_byte_position=12,
+                        I18nMessage("csv.truncated_file", [20, 13], "cjwparse"),
+                        I18nMessage(
+                            "text.repaired_encoding",
+                            dict(
+                                encoding="utf-8",
+                                first_invalid_byte=195,
+                                first_invalid_byte_position=12,
+                            ),
+                            "cjwparse",
                         ),
                     ],
                 ),
@@ -483,22 +519,25 @@ class ParseCsvInternalTests(unittest.TestCase):
                 _internal_parse_csv(path, has_header=True),
                 ParseCsvResult(
                     pa.table({"AB": ["a\tb"], "C": ["c"]}),
-                    [ParseCsvWarning.CleanedAsciiColumnNames(1, "AB")],
+                    [I18nMessage("cleaned_column_names", [1, "AB"], "cjwmodule")],
                 ),
             )
 
-    @override_settings(MAX_BYTES_PER_COLUMN_NAME=4)
     def test_truncate_column_names(self):
-        with _temp_csv("ABC,ABCD,ABCDE,BCDEF\na,b,c,d") as path:
+        with _temp_csv("ABC,ABCD,ABCDE,BCDEF\na,b,ccccc,d") as path:
             assert_csv_result_equals(
-                _internal_parse_csv(path, has_header=True),
+                _internal_parse_csv(
+                    path,
+                    has_header=True,
+                    settings=Settings(MAX_BYTES_PER_COLUMN_NAME=4),
+                ),
                 ParseCsvResult(
                     pa.table(
-                        {"ABC": ["a"], "ABCD": ["b"], "AB 2": ["c"], "BCDE": ["d"]}
+                        {"ABC": ["a"], "ABCD": ["b"], "AB 2": ["ccccc"], "BCDE": ["d"]}
                     ),
                     [
-                        ParseCsvWarning.TruncatedColumnNames(2, "AB 2"),
-                        ParseCsvWarning.NumberedColumnNames(1, "AB 2"),
+                        I18nMessage("truncated_column_names", [2, "AB 2"], "cjwmodule"),
+                        I18nMessage("numbered_column_names", [1, "AB 2"], "cjwmodule"),
                     ],
                 ),
             )
