@@ -467,4 +467,4 @@ def parse_csv(
     ) as writer:
         writer.write_table(result.table)
 
-    return [warning.to_i18n() for warning in result.warnings]
+    return result.warnings
