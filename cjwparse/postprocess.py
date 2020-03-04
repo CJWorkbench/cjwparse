@@ -1,6 +1,6 @@
 import pyarrow
 
-from . import settings
+from .settings import Settings
 
 
 def _string_array_pylist_n_bytes(data: pyarrow.ChunkedArray) -> int:
@@ -22,7 +22,9 @@ def _string_array_pylist_n_bytes(data: pyarrow.ChunkedArray) -> int:
     )
 
 
-def _maybe_dictionary_encode_column(data: pyarrow.ChunkedArray) -> pyarrow.ChunkedArray:
+def _maybe_dictionary_encode_column(
+    data: pyarrow.ChunkedArray, *, settings: Settings
+) -> pyarrow.ChunkedArray:
     if data.null_count == len(data):
         return data
 
@@ -50,11 +52,13 @@ def _maybe_dictionary_encode_column(data: pyarrow.ChunkedArray) -> pyarrow.Chunk
         return data
 
 
-def dictionary_encode_columns(table: pyarrow.Table) -> pyarrow.Table:
+def dictionary_encode_columns(
+    table: pyarrow.Table, *, settings: Settings
+) -> pyarrow.Table:
     return pyarrow.table(
         {
             name: (
-                _maybe_dictionary_encode_column(column)
+                _maybe_dictionary_encode_column(column, settings=settings)
                 if column.type == pyarrow.utf8()
                 else column
             )

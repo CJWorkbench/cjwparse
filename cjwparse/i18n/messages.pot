@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2020-03-04 10:20-0500\n"
+"POT-Creation-Date: 2020-03-04 12:05-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -21,41 +21,41 @@ msgstr ""
 
 #. default-message: Unknown file extension {ext}. Please try a different file.
 #: api.py:51
-msgid "parse_file.unknown_ext"
+msgid "file.unknown_ext"
 msgstr ""
 
 #. default-message: Skipped {n_rows} rows (after row limit of {max_n_rows})
-#: csv.py:45
+#: csv.py:44
 msgid "warning.skipped_rows"
 msgstr ""
 
 #. default-message: Skipped {n_columns} columns (after column limit of {max_n_columns})
-#: csv.py:57
+#: csv.py:56
 msgid "warning.skipped_columns"
 msgstr ""
 
 #. default-message: Truncated {n_values} values (value byte limit is {max_n_bytes}; see row {row_number} column {column_number})
-#: csv.py:73
+#: csv.py:72
 msgid "warning.truncated_values"
 msgstr ""
 
 #. default-message: Repaired {n_values} values (misplaced quotation marks; see row {row_number} column {column_number})
-#: csv.py:89
-msgid "warning.csv.fixed_quotes"
+#: csv.py:88
+msgid "csv.repaired_quotes"
 msgstr ""
 
 #. default-message: Repaired last value (missing quotation mark)
-#: csv.py:97
-msgid "warning.csv.fixed_eof"
+#: csv.py:96
+msgid "csv.repaired_eof"
 msgstr ""
 
 #. default-message: Truncated {n_bytes_truncated} from file (maximum is {max_n_bytes} bytes)
-#: csv.py:401
+#: csv.py:400
 msgid "csv.truncated_file"
 msgstr ""
 
 #. default-message: Encoding error: byte {byte} is invalid {encoding} at position {position}. We replaced invalid bytes with “�”.
-#: text.py:92
+#: text.py:94
 msgid "text.repaired_encoding"
 msgstr ""
 

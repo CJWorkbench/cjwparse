@@ -34,7 +34,7 @@ def assert_arrow_table_equals(
     assertEqual(result1.shape, result2.shape)
     assertEqual(result1.column_names, result2.column_names)
     for colname, actual_col, expected_col in zip(
-        result1.table.column_names, result1.table.columns, result2.table.columns
+        result1.column_names, result1.columns, result2.columns
     ):
         assertEqual(
             actual_col.type, expected_col.type, msg=f"Column {colname} has wrong type"

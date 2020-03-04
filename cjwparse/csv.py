@@ -13,11 +13,10 @@ import pyarrow
 from cjwmodule.i18n import I18nMessage
 from cjwmodule.util.colnames import gen_unique_clean_colnames_and_warn
 
-from . import settings
 from ._util import tempfile_context
 from .i18n import _trans_cjwparse
 from .postprocess import dictionary_encode_columns
-from .settings import Settings
+from .settings import DEFAULT_SETTINGS, Settings
 from .text import transcode_to_utf8_and_warn
 
 
@@ -60,33 +59,33 @@ _ERROR_PATTERNS = [
     ),
     ErrorPattern(
         re.compile(
-            r"^truncated (?P<n_values>\d+) values \(value byte limit is (?P<max_n_bytes_per_value>\d+); see row (?P<row_number>\d+) column (?P<column_number>\d+)\)$"
+            r"^truncated (?P<n_values>\d+) values \(value byte limit is (?P<max_n_bytes_per_value>\d+); see row (?P<row_index>\d+) column (?P<column_index>\d+)\)$"
         ),
         (
-            lambda n_values, max_n_bytes_per_value, row_number, column_number: _trans_cjwparse(
+            lambda n_values, max_n_bytes_per_value, row_index, column_index: _trans_cjwparse(
                 "warning.truncated_values",
                 "Truncated {n_values} values (value byte limit is {max_n_bytes}; see row {row_number} column {column_number})",
                 dict(
                     n_values=int(n_values),
                     max_n_bytes_per_value=int(max_n_bytes_per_value),
-                    row_number=int(row_number),
-                    column_number=int(column_number),
+                    row_number=int(row_index) + 1,
+                    column_number=int(column_index) + 1,
                 ),
             )
         ),
     ),
     ErrorPattern(
         re.compile(
-            r"^repaired (?P<n_values>\d+) values \(misplaced quotation marks; see row (P<row_number>\d+) column (<column_number>\d+)\)$"
+            r"^repaired (?P<n_values>\d+) values \(misplaced quotation marks; see row (?P<row_index>\d+) column (?P<column_index>\d+)\)$"
         ),
         (
-            lambda n_values, row_number, column_number: _trans_cjwparse(
-                "warning.csv.fixed_quotes",
+            lambda n_values, row_index, column_index: _trans_cjwparse(
+                "csv.repaired_quotes",
                 "Repaired {n_values} values (misplaced quotation marks; see row {row_number} column {column_number})",
                 dict(
                     n_values=int(n_values),
-                    row_number=int(row_number),
-                    column_number=int(column_number),
+                    row_number=int(row_index) + 1,
+                    column_number=int(column_index) + 1,
                 ),
             )
         ),
@@ -95,7 +94,7 @@ _ERROR_PATTERNS = [
         re.compile(r"^repaired last value \(missing quotation mark\)$"),
         (
             lambda: _trans_cjwparse(
-                "warning.csv.fixed_eof", "Repaired last value (missing quotation mark)"
+                "csv.repaired_eof", "Repaired last value (missing quotation mark)"
             )
         ),
     ),
@@ -112,7 +111,7 @@ def _parse_csv_to_arrow_warning(line: str) -> I18nMessage:
     for pattern, builder in _ERROR_PATTERNS:
         match = pattern.match(line)
         if match:
-            return builder(**match)
+            return builder(**match.groupdict())
     raise RuntimeError("Could not parse csv-to-arrow output line: %r" % line)
 
 
@@ -127,7 +126,7 @@ def _postprocess_name_columns(
     Return `table`, with final column names but still String values.
     """
     if has_header and table.num_rows > 0:
-        new_names, warnings = gen_unique_clean_colnames_and_warn(
+        names, warnings = gen_unique_clean_colnames_and_warn(
             list(("" if c[0] is pyarrow.NULL else c[0].as_py()) for c in table.columns),
             settings=settings,
         )
@@ -335,11 +334,11 @@ def _postprocess_table(
     table, warnings = _postprocess_name_columns(table, has_header, settings)
     if autoconvert_text_to_numbers:
         table = _postprocess_autocast_columns(table)
-    table = dictionary_encode_columns(table)
+    table = dictionary_encode_columns(table, settings=settings)
     return table, warnings
 
 
-def detect_delimiter(path: Path):
+def detect_delimiter(path: Path, settings: Settings):
     with path.open("r", encoding="utf-8") as textio:
         sample = textio.read(settings.SEP_DETECT_CHUNK_SIZE)
 
@@ -355,7 +354,7 @@ def detect_delimiter(path: Path):
 def _parse_csv(
     path: Path,
     *,
-    settings: Settings,
+    settings: Settings = DEFAULT_SETTINGS,
     encoding: Optional[str],
     delimiter: Optional[str],
     has_header: bool,
@@ -412,7 +411,7 @@ def _parse_csv(
 
         # Sniff delimiter
         if not delimiter:
-            delimiter = detect_delimiter(utf8_path)
+            delimiter = detect_delimiter(utf8_path, settings)
 
         with tempfile_context(suffix=".arrow") as arrow_path:
             # raise subprocess.CalledProcessError on error ... but there is no
@@ -434,14 +433,7 @@ def _parse_csv(
                 capture_output=True,
                 check=True,
             )
-            warnings.extend(
-                [
-                    warning.to_i18n()
-                    for warning in _parse_csv_to_arrow_warnings(
-                        child.stdout.decode("utf-8")
-                    )
-                ]
-            )
+            warnings.extend(_parse_csv_to_arrow_warnings(child.stdout.decode("utf-8")))
 
             reader = pyarrow.ipc.open_file(arrow_path.as_posix())
             raw_table = reader.read_all()  # efficient -- RAM is mmapped
@@ -456,7 +448,7 @@ def parse_csv(
     path: Path,
     *,
     output_path: Path,
-    settings: Settings,
+    settings: Settings = DEFAULT_SETTINGS,
     encoding: Optional[str],
     delimiter: Optional[str],
     has_header: bool,

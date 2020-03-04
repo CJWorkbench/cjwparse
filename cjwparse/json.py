@@ -20,7 +20,7 @@ def _postprocess_table(table: pyarrow.Table, settings: Settings) -> pyarrow.Tabl
       `settings.MAX_DICTIONARY_SIZE` and
       `settings.MIN_DICTIONARY_COMPRESSION_RATIO`.
     """
-    table = dictionary_encode_columns(table, settings)
+    table = dictionary_encode_columns(table, settings=settings)
     return table
 
 
@@ -51,7 +51,9 @@ def _parse_json(
 
     with tempfile_context(prefix="utf8-", suffix=".txt") as utf8_path:
         # raises LookupError, UnicodeError
-        warnings.extend(transcode_to_utf8_and_warn(path, utf8_path, encoding))
+        warnings.extend(
+            transcode_to_utf8_and_warn(path, utf8_path, encoding, settings=settings)
+        )
 
         with tempfile_context(suffix=".arrow") as arrow_path:
             # raise subprocess.CalledProcessError on error ... but there is no

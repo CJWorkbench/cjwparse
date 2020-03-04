@@ -9,7 +9,7 @@ from cjwmodule.util.colnames import gen_unique_clean_colnames_and_warn
 
 from ._util import tempfile_context
 from .postprocess import dictionary_encode_columns
-from .settings import Settings
+from .settings import DEFAULT_SETTINGS, Settings
 
 
 class ParseResult(NamedTuple):
@@ -28,7 +28,7 @@ def _postprocess_table(
       `settings.MIN_DICTIONARY_COMPRESSION_RATIO`.
     * Rename columns if `headers_table` is provided.
     """
-    table = dictionary_encode_columns(table)
+    table = dictionary_encode_columns(table, settings=settings)
     if headers_table is not None:
         colnames = [
             # filter out None and ""
@@ -45,7 +45,7 @@ def _postprocess_table(
 
 
 def _parse_excel(
-    tool: str, path: Path, *, header_rows: str, settings: Settings
+    tool: str, path: Path, *, header_rows: str, settings: Settings = DEFAULT_SETTINGS
 ) -> ParseResult:
     """
     Parse Excel .xlsx or .xls file.
@@ -110,7 +110,12 @@ def _write_table(table: pyarrow.Table, output_path: Path) -> None:
 
 
 def _parse_excel_and_write_result(
-    *, tool: str, path: Path, output_path: Path, has_header: bool, settings: Settings
+    *,
+    tool: str,
+    path: Path,
+    output_path: Path,
+    has_header: bool,
+    settings: Settings = DEFAULT_SETTINGS
 ) -> List[I18nMessage]:
     table, warnings = _parse_excel(
         tool, path, header_rows=("0-1" if has_header else ""), settings=settings
@@ -120,7 +125,11 @@ def _parse_excel_and_write_result(
 
 
 def parse_xlsx(
-    path: Path, *, output_path: Path, settings: Settings, has_header: bool
+    path: Path,
+    *,
+    output_path: Path,
+    settings: Settings = DEFAULT_SETTINGS,
+    has_header: bool
 ) -> List[I18nMessage]:
     return _parse_excel_and_write_result(
         tool="xlsx-to-arrow",
@@ -132,7 +141,11 @@ def parse_xlsx(
 
 
 def parse_xls(
-    path: Path, *, output_path: Path, settings: Settings, has_header: bool
+    path: Path,
+    *,
+    output_path: Path,
+    settings: Settings = DEFAULT_SETTINGS,
+    has_header: bool
 ) -> List[I18nMessage]:
     return _parse_excel_and_write_result(
         tool="xls-to-arrow",

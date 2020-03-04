@@ -9,7 +9,7 @@ import pyarrow
 from cjwmodule.i18n import I18nMessage
 from cjwparse._util import tempfile_context
 from cjwparse.json import ParseJsonResult, _parse_json
-from cjwparse.settings import Settings
+from cjwparse.settings import DEFAULT_SETTINGS, Settings
 
 from .util import assert_arrow_table_equals
 
@@ -20,18 +20,24 @@ def assert_json_result_equals(actual: ParseJsonResult, expected: ParseJsonResult
 
 
 def _parse_json_file_with_defaults(
-    path: Path, *, encoding: Optional[str] = "utf-8"
+    path: Path,
+    *,
+    encoding: Optional[str] = "utf-8",
+    settings: Settings = DEFAULT_SETTINGS
 ) -> ParseJsonResult:
-    return _parse_json(path, encoding=encoding)
+    return _parse_json(path, encoding=encoding, settings=settings)
 
 
 def _parse_json_with_defaults(
     data: Union[Dict[str, Any], List[Any], str, bytes],
     *,
     encoding: Optional[str] = "utf-8",
+    settings: Settings = DEFAULT_SETTINGS
 ) -> ParseJsonResult:
     with _temp_json(data) as path:
-        return _parse_json_file_with_defaults(path, encoding=encoding)
+        return _parse_json_file_with_defaults(
+            path, encoding=encoding, settings=settings
+        )
 
 
 @contextlib.contextmanager
@@ -163,6 +169,7 @@ class ParseJsonTests(unittest.TestCase):
                         {
                             "text": 'skipped 2 non-Object records; example Array item 0: "foo"'
                         },
+                        None,
                     )
                 ],
             ),
@@ -179,6 +186,7 @@ class ParseJsonTests(unittest.TestCase):
                         {
                             "text": 'JSON is not an Array or Object containing an Array; got: "foo"'
                         },
+                        None,
                     )
                 ],
             ),
@@ -199,6 +207,7 @@ class ParseJsonTests(unittest.TestCase):
                     I18nMessage(
                         "TODO_i18n",
                         {"text": "JSON parse error at byte 1: Invalid value."},
+                        None,
                     )
                 ],
             ),
@@ -230,11 +239,7 @@ class ParseJsonTests(unittest.TestCase):
                 [
                     I18nMessage(
                         "text.repaired_encoding",
-                        dict(
-                            encoding="utf-8",
-                            first_invalid_byte=233,
-                            first_invalid_byte_position=11,
-                        ),
+                        dict(encoding="utf-8", byte="0xE9", position=11),
                         "cjwparse",
                     )
                 ],
@@ -272,7 +277,9 @@ class ParseJsonTests(unittest.TestCase):
                 pyarrow.table({"A": ["a", "b"]}),
                 [
                     I18nMessage(
-                        "TODO_i18n", {"text": "skipped 1 rows (after row limit of 2)"}
+                        "TODO_i18n",
+                        {"text": "skipped 1 rows (after row limit of 2)"},
+                        None,
                     )
                 ],
             ),
@@ -289,7 +296,8 @@ class ParseJsonTests(unittest.TestCase):
                 [
                     I18nMessage(
                         "TODO_i18n",
-                        {"text": "skipped 1 columns (after column limit of 2)"},
+                        {"text": "skipped column C (after column limit of 2)"},
+                        None,
                     )
                 ],
             ),
@@ -305,7 +313,9 @@ class ParseJsonTests(unittest.TestCase):
                 pyarrow.table({"A": ["abcd"], "B": ["bcde"]}),
                 [
                     I18nMessage(
-                        "TODO_i18n", {"text": "stopped at limit of 8 bytes of data"}
+                        "TODO_i18n",
+                        {"text": "stopped at limit of 8 bytes of data"},
+                        None,
                     )
                 ],
             ),
@@ -321,7 +331,9 @@ class ParseJsonTests(unittest.TestCase):
                 pyarrow.table({"AB": ["x"], "BC": ["y"]}),
                 [
                     I18nMessage(
-                        "TODO_i18n", {"text": "truncated 2 column names; example AB"}
+                        "TODO_i18n",
+                        {"text": "truncated 2 column names; example AB"},
+                        None,
                     )
                 ],
             ),
@@ -341,6 +353,7 @@ class ParseJsonTests(unittest.TestCase):
                         {
                             "text": "truncated 2 values (value byte limit is 3; see row 0 column A)"
                         },
+                        None,
                     )
                 ],
             ),

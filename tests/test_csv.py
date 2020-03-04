@@ -8,7 +8,7 @@ import pyarrow as pa
 from cjwmodule.i18n import I18nMessage
 from cjwparse._util import tempfile_context
 from cjwparse.csv import ParseCsvResult, _parse_csv
-from cjwparse.settings import Settings
+from cjwparse.settings import DEFAULT_SETTINGS, Settings
 
 from .util import assert_arrow_table_equals
 
@@ -25,6 +25,7 @@ def _internal_parse_csv(
     delimiter: Optional[str] = ",",
     has_header: bool = False,
     autoconvert_text_to_numbers: bool = False,
+    settings: Settings = DEFAULT_SETTINGS,
 ):
     return _parse_csv(
         path,
@@ -32,6 +33,7 @@ def _internal_parse_csv(
         delimiter=delimiter,
         has_header=has_header,
         autoconvert_text_to_numbers=autoconvert_text_to_numbers,
+        settings=settings,
     )
 
 
@@ -154,7 +156,13 @@ class ParseCsvInternalTests(unittest.TestCase):
                             "Column 3": ["c"],  # None => default, 'Column 3'
                         }
                     ),
-                    [],
+                    [
+                        I18nMessage(
+                            "util.colnames.warnings.default",
+                            dict(n_columns=2, first_colname="Column 2"),
+                            "cjwmodule",
+                        )
+                    ],
                 ),
             )
 
@@ -172,7 +180,18 @@ class ParseCsvInternalTests(unittest.TestCase):
                             "Column 5": ["d"],  # rewritten
                         }
                     ),
-                    [I18nMessage("numbered_columns", {}, "cjwmodule")],
+                    [
+                        I18nMessage(
+                            "util.colnames.warnings.default",
+                            dict(n_columns=1, first_colname="Column 5"),
+                            "cjwmodule",
+                        ),
+                        I18nMessage(
+                            "util.colnames.warnings.numbered",
+                            dict(n_columns=2, first_colname="A 2"),
+                            "cjwmodule",
+                        ),
+                    ],
                 ),
             )
 
@@ -215,11 +234,7 @@ class ParseCsvInternalTests(unittest.TestCase):
                     [
                         I18nMessage(
                             "text.repaired_encoding",
-                            dict(
-                                encoding="utf-8",
-                                first_invalid_byte=244,
-                                first_invalid_byte_position=3,
-                            ),
+                            dict(encoding="utf-8", byte="0xF4", position=3),
                             "cjwparse",
                         )
                     ],
@@ -388,7 +403,18 @@ class ParseCsvInternalTests(unittest.TestCase):
                             ]
                         }
                     ),
-                    [I18nMessage("truncated_values", [7, 4, 0, 0], "cjwparse")],
+                    [
+                        I18nMessage(
+                            "warning.truncated_values",
+                            dict(
+                                n_values=7,
+                                max_n_bytes_per_value=4,
+                                row_number=1,
+                                column_number=1,
+                            ),
+                            "cjwparse",
+                        )
+                    ],
                 ),
             )
 
@@ -398,7 +424,13 @@ class ParseCsvInternalTests(unittest.TestCase):
                 _internal_parse_csv(path, has_header=True),
                 ParseCsvResult(
                     pa.table({"A": ["x y"], "B": ['z" a']}),
-                    [I18nMessage("csv.repaired_values", [2, 1, 0], "cjwparse")],
+                    [
+                        I18nMessage(
+                            "csv.repaired_quotes",
+                            dict(n_values=2, row_number=2, column_number=1),
+                            "cjwparse",
+                        )
+                    ],
                 ),
             )
 
@@ -429,7 +461,9 @@ class ParseCsvInternalTests(unittest.TestCase):
                     pa.table({"A": list("abcd")}),
                     [
                         I18nMessage(
-                            "skipped_rows", dict(n_rows=3, max_n_rows=5), "cjwparse"
+                            "warning.skipped_rows",
+                            dict(n_rows=3, max_n_rows=5),
+                            "cjwparse",
                         )
                     ],
                 ),
@@ -445,7 +479,7 @@ class ParseCsvInternalTests(unittest.TestCase):
                     pa.table({"A": ["a"], "B": ["b"]}),
                     [
                         I18nMessage(
-                            "skipped_columns",
+                            "warning.skipped_columns",
                             dict(n_columns=4, max_n_columns=2),
                             "cjwparse",
                         )
@@ -461,7 +495,13 @@ class ParseCsvInternalTests(unittest.TestCase):
                 ),
                 ParseCsvResult(
                     pa.table({"A": ["a", "c", "e"], "B": ["b", "d", None]}),
-                    [I18nMessage("csv.truncated_file", [19, 13], "cjwparse")],
+                    [
+                        I18nMessage(
+                            "csv.truncated_file",
+                            dict(n_bytes_truncated=6, max_n_bytes=13),
+                            "cjwparse",
+                        )
+                    ],
                 ),
             )
 
@@ -474,14 +514,14 @@ class ParseCsvInternalTests(unittest.TestCase):
                 ParseCsvResult(
                     pa.table({"A": ["a", "c", "�"], "B": ["b", "d", None]}),
                     [
-                        I18nMessage("csv.truncated_file", [20, 13], "cjwparse"),
+                        I18nMessage(
+                            "csv.truncated_file",
+                            dict(n_bytes_truncated=7, max_n_bytes=13),
+                            "cjwparse",
+                        ),
                         I18nMessage(
                             "text.repaired_encoding",
-                            dict(
-                                encoding="utf-8",
-                                first_invalid_byte=195,
-                                first_invalid_byte_position=12,
-                            ),
+                            dict(encoding="utf-8", byte="0xC3", position=12),
                             "cjwparse",
                         ),
                     ],
@@ -520,7 +560,13 @@ class ParseCsvInternalTests(unittest.TestCase):
                 _internal_parse_csv(path, has_header=True),
                 ParseCsvResult(
                     pa.table({"AB": ["a\tb"], "C": ["c"]}),
-                    [I18nMessage("cleaned_column_names", [1, "AB"], "cjwmodule")],
+                    [
+                        I18nMessage(
+                            "util.colnames.warnings.ascii_cleaned",
+                            dict(n_columns=1, first_colname="AB"),
+                            "cjwmodule",
+                        )
+                    ],
                 ),
             )
 
@@ -537,8 +583,16 @@ class ParseCsvInternalTests(unittest.TestCase):
                         {"ABC": ["a"], "ABCD": ["b"], "AB 2": ["ccccc"], "BCDE": ["d"]}
                     ),
                     [
-                        I18nMessage("truncated_column_names", [2, "AB 2"], "cjwmodule"),
-                        I18nMessage("numbered_column_names", [1, "AB 2"], "cjwmodule"),
+                        I18nMessage(
+                            "util.colnames.warnings.truncated",
+                            dict(n_columns=2, first_colname="AB 2", n_bytes=4),
+                            "cjwmodule",
+                        ),
+                        I18nMessage(
+                            "util.colnames.warnings.numbered",
+                            dict(n_columns=1, first_colname="AB 2"),
+                            "cjwmodule",
+                        ),
                     ],
                 ),
             )

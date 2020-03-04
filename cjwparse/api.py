@@ -49,9 +49,9 @@ def parse_file(
             output_path.write_bytes(b"")
             return [
                 _trans_cjwparse(
-                    "parse_file.unknown_ext",
-                    default="Unknown file extension {ext}. Please try a different file.",
-                    arguments={"ext": ext},
+                    "file.unknown_ext",
+                    "Unknown file extension {ext}. Please try a different file.",
+                    {"ext": ext},
                 )
             ]
 

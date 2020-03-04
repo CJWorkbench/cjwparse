@@ -8,12 +8,14 @@ import cchardet as chardet
 from cjwmodule.i18n import I18nMessage
 
 from .i18n import _trans_cjwparse
-from .settings import Settings
+from .settings import DEFAULT_SETTINGS, Settings
 
 UNICODE_BOM = "\uFFFE"
 
 
-def detect_encoding(bytesio: io.BytesIO, *, settings: Settings) -> str:
+def detect_encoding(
+    bytesio: io.BytesIO, *, settings: Settings = DEFAULT_SETTINGS
+) -> str:
     """
     Detect charset, as Python-friendly encoding string.
 
