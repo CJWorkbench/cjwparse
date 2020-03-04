@@ -3,6 +3,46 @@ Parsers for [CJWorkbench](https://github.com/CJWorkbench/cjworkbench) modules.
 Workbench modules may _optionally_ depend on the latest version of this Python
 package for its `cjwparse.api.parse_file()` function.
 
+Installation
+============
+
+This is meant to be used within a Docker container. It depends on executables
+`/usr/bin/(csv|json|xls|xlsx)-to-arrow`.
+
+Your Dockerfile might look something like this:
+
+```
+FROM arrow-tools:v0.0.11 AS arrow-tools
+FROM python:3.8.1-buster AS main
+
+COPY --from=arrow-tools /usr/bin/csv-to-arrow /usr/bin/csv-to-arrow
+COPY --from=arrow-tools /usr/bin/json-to-arrow /usr/bin/json-to-arrow
+COPY --from=arrow-tools /usr/bin/xls-to-arrow /usr/bin/xls-to-arrow
+COPY --from=arrow-tools /usr/bin/xlsx-to-arrow /usr/bin/xlsx-to-arrow
+
+# And now that these binaries are accessible, you can install cjwparse...
+```
+
+Usage
+=====
+
+```python
+import pyarrow
+
+from cjwparse.api import parse_file
+
+# Convert a CSV file 'input.csv' to Arrow file 'output.arrow'
+input_path = Path("input.csv")
+input_path.write_bytes(b"A,B\n1,2")
+output_path = Path("output.arrow")
+parse_file(input_path, output_path=output_path, has_headers=False)
+
+# Read the output
+with pyarrow.ipc.open_file(output_path) as reader:
+    table = reader.read_all()
+```
+
+
 Developing
 ==========
 
