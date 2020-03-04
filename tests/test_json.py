@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, ContextManager, Dict, List, Optional, Union
 
 import pyarrow
+
 from cjwmodule.i18n import I18nMessage
 from cjwparse._util import tempfile_context
 from cjwparse.json import ParseJsonResult, _parse_json

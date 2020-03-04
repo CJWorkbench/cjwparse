@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, NamedTuple, Optional
 
 import pyarrow
+
 from cjwmodule.i18n import I18nMessage
 
 from ._util import tempfile_context

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Pattern, Tuple
 
 import pyarrow
+
 from cjwmodule.i18n import I18nMessage
 from cjwmodule.util.colnames import gen_unique_clean_colnames_and_warn
 
@@ -91,7 +92,7 @@ _ERROR_PATTERNS = [
         ),
     ),
     ErrorPattern(
-        re.compile("^repaired last value \(missing quotation mark\)$"),
+        re.compile(r"^repaired last value \(missing quotation mark\)$"),
         (
             lambda: _trans_cjwparse(
                 "warning.csv.fixed_eof", "Repaired last value (missing quotation mark)"

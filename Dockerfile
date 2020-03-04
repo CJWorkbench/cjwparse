@@ -10,7 +10,9 @@ COPY --from=arrow-tools /usr/bin/xlsx-to-arrow /usr/bin/xlsx-to-arrow
 
 RUN pip install black pyflakes isort
 
+# README is read by setup.py
 COPY setup.py README.md /app/
+# __version__ (for setup.py)
 COPY cjwparse/__init__.py /app/cjwparse/
 WORKDIR /app
 RUN pip install .[tests,maintenance]

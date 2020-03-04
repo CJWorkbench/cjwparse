@@ -4,9 +4,10 @@ from pathlib import Path
 from typing import List, Optional
 
 import cchardet as chardet
+
 from cjwmodule.i18n import I18nMessage
 
-from .i18n import _cjwparse_trans
+from .i18n import _trans_cjwparse
 from .settings import Settings
 
 UNICODE_BOM = "\uFFFE"
@@ -82,7 +83,7 @@ def transcode_to_utf8_and_warn(
                 assert decoder.errors == "strict" and len(warnings) == 0
                 decoder_state_buf = decoder.getstate()[0]
                 warnings.append(
-                    _cjwparse_trans(
+                    _trans_cjwparse(
                         "text.repaired_encoding",
                         "Encoding error: byte {byte} is invalid {encoding} at position {position}. We replaced invalid bytes with “�”.",
                         {

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, NamedTuple, Optional, Tuple
 
 import pyarrow
+
 from cjwmodule.i18n import I18nMessage
 from cjwmodule.util.colnames import gen_unique_clean_colnames_and_warn
 

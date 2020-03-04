@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import ContextManager, Optional, Union
 
 import pyarrow as pa
+
 from cjwmodule.i18n import I18nMessage
 from cjwparse._util import tempfile_context
 from cjwparse.csv import ParseCsvResult, _parse_csv
