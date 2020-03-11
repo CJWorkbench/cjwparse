@@ -40,7 +40,7 @@ _ERROR_PATTERNS = [
         (
             lambda n_rows, max_n_rows: _trans_cjwparse(
                 "warning.skipped_rows",
-                "Skipped {n_rows} rows (after row limit of {max_n_rows})",
+                "{n_rows, plural, one{Skipped # row} other{Skipped # rows}} (after row limit of {max_n_rows})",
                 dict(n_rows=int(n_rows), max_n_rows=int(max_n_rows)),
             )
         ),
@@ -52,7 +52,7 @@ _ERROR_PATTERNS = [
         (
             lambda n_columns, max_n_columns: _trans_cjwparse(
                 "warning.skipped_columns",
-                "Skipped {n_columns} columns (after column limit of {max_n_columns})",
+                "{n_columns, plural, one{Skipped # column} other{Skipped # columns}} (after column limit of {max_n_columns})",
                 dict(n_columns=int(n_columns), max_n_columns=int(max_n_columns)),
             )
         ),
@@ -64,7 +64,7 @@ _ERROR_PATTERNS = [
         (
             lambda n_values, max_n_bytes_per_value, row_index, column_index: _trans_cjwparse(
                 "warning.truncated_values",
-                "Truncated {n_values} values (value byte limit is {max_n_bytes}; see row {row_number} column {column_number})",
+                "{n_values, plural, one{Truncated # value} other{Truncated # values}} (value byte limit is {max_n_bytes}; see row {row_number} column {column_number})",
                 dict(
                     n_values=int(n_values),
                     max_n_bytes_per_value=int(max_n_bytes_per_value),
@@ -81,7 +81,7 @@ _ERROR_PATTERNS = [
         (
             lambda n_values, row_index, column_index: _trans_cjwparse(
                 "csv.repaired_quotes",
-                "Repaired {n_values} values (misplaced quotation marks; see row {row_number} column {column_number})",
+                "{n_values, plural, one{Repaired # value} other{Repaired # values}} (misplaced quotation marks; see row {row_number} column {column_number})",
                 dict(
                     n_values=int(n_values),
                     row_number=int(row_index) + 1,
@@ -395,7 +395,7 @@ def _parse_csv(
             warnings.append(
                 _trans_cjwparse(
                     "csv.truncated_file",
-                    "Truncated {n_bytes_truncated} from file (maximum is {max_n_bytes} bytes)",
+                    "{n_bytes_truncated, one{Truncated # byte} other{Truncated # bytes}} from file (maximum is {max_n_bytes} bytes)",
                     dict(
                         n_bytes_truncated=(n_bytes - settings.MAX_CSV_BYTES),
                         max_n_bytes=settings.MAX_CSV_BYTES,
