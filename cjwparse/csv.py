@@ -138,7 +138,7 @@ def _postprocess_name_columns(
         warnings = []
 
     return (
-        pyarrow.table({name: table.column(i) for i, name in enumerate(names)}),
+        pyarrow.table(dict(zip(names, table.columns))),
         warnings,
     )
 
