@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2020-03-04 12:05-0500\n"
+"POT-Creation-Date: 2020-03-11 13:12+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: el\n"
@@ -21,33 +21,48 @@ msgstr ""
 
 #: api.py:51
 msgid "file.unknown_ext"
-msgstr ""
+msgstr "Άγνωστη επέκταση αρχείου {ext}. Δοκιμάστε ένα διαφορετικό τύπο αρχείου."
 
 #: csv.py:44
 msgid "warning.skipped_rows"
 msgstr ""
+"{n_rows, plural, other{Παραλείφθηκαν # σειρές} one{Παραλείφθηκε # σειρά}}"
+" (μετά το όριο των {max_n_rows} σειρών)"
 
 #: csv.py:56
 msgid "warning.skipped_columns"
 msgstr ""
+"{n_columns, other{Παραλείφθηκαν # στήλες} one{Παραλείφθηκε # στήλη}} "
+"(μετά το όριο των {max_n_columns} στηλών)"
 
 #: csv.py:72
 msgid "warning.truncated_values"
 msgstr ""
+"Έγινε περικοπή {n_values, plural, one{# τιμής} other{# τιμών}} (το όριο "
+"τιμών είναι {max_n_bytes} bytes - δείτε σειρά {row_number} στήλη "
+"{column_number})"
 
 #: csv.py:88
 msgid "csv.repaired_quotes"
 msgstr ""
+"{n_values, plural, one{Επιδιορθώθηκε # τιμή} other{Επιδιορθώθηκαν # "
+"τιμές}} (εισαγωγικά σε λάθος θέση - δείτε σειρά {σειρά_γραμμής} στήλη "
+"{αριθμός_τομέα})"
 
 #: csv.py:96
 msgid "csv.repaired_eof"
-msgstr ""
+msgstr "Επιδιορθώθηκε η τελευταία τιμή (έλειπαν εισαγωγικά)"
 
 #: csv.py:400
 msgid "csv.truncated_file"
 msgstr ""
+"Έγινε περικοπή {n_bytes_truncated, plural, one{# byte} other{# bytes}} "
+"από το αρχείο (το μέγιστο είναι {max_n_bytes} bytes)"
 
 #: text.py:94
 msgid "text.repaired_encoding"
 msgstr ""
+"Σφάλμα κωδικοποίησης: Το byte {byte} είναι μη έγκυρη κωδικοποίηση "
+"{encoding} στη θέση {position}. Τα μη έγκυρα bytes αντικαταστάθηκαν με "
+"\"�\"."
 
