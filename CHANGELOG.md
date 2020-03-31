@@ -1,3 +1,9 @@
+v0.0.4 - 2020-03-31
+-------------------
+
+* i18n.en: pluralize warnings correctly.
+* i18n.el: first Greek translations.
+
 v0.0.3 - 2020-03-08
 -------------------
 
