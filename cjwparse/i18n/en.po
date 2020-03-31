@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2020-03-04 12:05-0500\n"
+"POT-Creation-Date: 2020-03-11 13:07+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -25,23 +25,28 @@ msgstr "Unknown file extension {ext}. Please try a different file."
 
 #: csv.py:44
 msgid "warning.skipped_rows"
-msgstr "Skipped {n_rows} rows (after row limit of {max_n_rows})"
+msgstr ""
+"{n_rows, plural, one{Skipped # row} other{Skipped # rows}} (after row "
+"limit of {max_n_rows})"
 
 #: csv.py:56
 msgid "warning.skipped_columns"
-msgstr "Skipped {n_columns} columns (after column limit of {max_n_columns})"
+msgstr ""
+"{n_columns, plural, one{Skipped # column} other{Skipped # columns}} "
+"(after column limit of {max_n_columns})"
 
 #: csv.py:72
 msgid "warning.truncated_values"
 msgstr ""
-"Truncated {n_values} values (value byte limit is {max_n_bytes}; see row "
-"{row_number} column {column_number})"
+"{n_values, plural, one{Truncated # value} other{Truncated # values}} "
+"(value byte limit is {max_n_bytes}; see row {row_number} column "
+"{column_number})"
 
 #: csv.py:88
 msgid "csv.repaired_quotes"
 msgstr ""
-"Repaired {n_values} values (misplaced quotation marks; see row "
-"{row_number} column {column_number})"
+"{n_values, plural, one{Repaired # value} other{Repaired # values}} "
+"(misplaced quotation marks; see row {row_number} column {column_number})"
 
 #: csv.py:96
 msgid "csv.repaired_eof"
@@ -49,7 +54,9 @@ msgstr "Repaired last value (missing quotation mark)"
 
 #: csv.py:400
 msgid "csv.truncated_file"
-msgstr "Truncated {n_bytes_truncated} from file (maximum is {max_n_bytes} bytes)"
+msgstr ""
+"{n_bytes_truncated, one{Truncated # byte} other{Truncated # bytes}} from "
+"file (maximum is {max_n_bytes} bytes)"
 
 #: text.py:94
 msgid "text.repaired_encoding"
