@@ -1,7 +1,7 @@
 # We run everything in a Dockerfile so we can pull arrow-tools binaries
 FROM workbenchdata/arrow-tools:v0.0.11 as arrow-tools
 
-FROM python:3.8.1-buster AS test
+FROM python:3.8.3-buster AS test
 
 COPY --from=arrow-tools /usr/bin/csv-to-arrow /usr/bin/csv-to-arrow
 COPY --from=arrow-tools /usr/bin/json-to-arrow /usr/bin/json-to-arrow

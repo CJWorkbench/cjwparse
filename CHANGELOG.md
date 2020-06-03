@@ -1,7 +1,12 @@
+v0.0.6 - 2020-06-03
+-------------------
+
+* csv: don't auto-convert "NaN" or "Inf" to Number
+
 v0.0.5 - 2020-06-03
 -------------------
 
-* csv: don't auto-convert Inf/-Inf to Number
+* csv: don't auto-convert huge strings of digits to Number
 
 v0.0.4 - 2020-03-31
 -------------------
