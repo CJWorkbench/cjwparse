@@ -107,7 +107,7 @@ class ParseCsvInternalTests(unittest.TestCase):
                 ParseCsvResult(pa.table({"A": pa.array([1, 2, 3], pa.int8())}), []),
             )
 
-    def test_autoconvert_text_to_number_when_number_is_too_big(self):
+    def test_autoconvert_text_to_number_use_str_when_number_is_too_big(self):
         # Column 1: [A, 1, 5, 9] (should not convert)
         big_number_str = (
             "123456789012345678901234567890123456789012345678901234567890"
@@ -127,12 +127,32 @@ class ParseCsvInternalTests(unittest.TestCase):
             "123456789012345678901234567890123456789012345678901234567890"
             "123456789012345678901234567890123456789012345678901234567890"
         )
-        with _temp_csv("A\n" + big_number_str) as path:
+        with _temp_csv(big_number_str) as path:
             result = _internal_parse_csv(
-                path, has_header=True, autoconvert_text_to_numbers=True
+                path, has_header=False, autoconvert_text_to_numbers=True
             )
             assert_csv_result_equals(
-                result, ParseCsvResult(pa.table({"A": [big_number_str]}), []),
+                result, ParseCsvResult(pa.table({"Column 1": [big_number_str]}), []),
+            )
+
+    def test_autoconvert_text_to_number_use_str_when_number_is_nan_or_inf(self):
+        # Column 1: [A, 1, 5, 9] (should not convert)
+        with _temp_csv("NaN,Inf,-Inf") as path:
+            result = _internal_parse_csv(
+                path, has_header=False, autoconvert_text_to_numbers=True
+            )
+            assert_csv_result_equals(
+                result,
+                ParseCsvResult(
+                    pa.table(
+                        {
+                            "Column 1": ["NaN"],
+                            "Column 2": ["Inf"],
+                            "Column 3": ["-Inf"],
+                        }
+                    ),
+                    [],
+                ),
             )
 
     def test_autoconvert_all_empty_is_text(self):

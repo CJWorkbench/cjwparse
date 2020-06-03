@@ -241,6 +241,38 @@ def _nix_utf8_chunk_empty_strings(chunk: pyarrow.Array) -> pyarrow.Array:
     )
 
 
+SCARY_BYTE_REGEX = re.compile(b"[nainfNAINF]")
+
+
+def _utf8_chunk_may_contain_inf_or_nan(chunk: pyarrow.Array) -> bool:
+    """
+    Return true if we should fast-skip converting a pa.Array.
+
+    The _true_ reason for this function is to test whether an Array contains
+    "Inf" or "NaN". A number-conversion library will parse those. But _this_
+    library is for Workbench, and Workbench doesn't support NaN/Inf. So this
+    function helps us decide _not_ to auto-convert a column when the intent
+    isn't perfectly clear.
+
+    Assume `arr` is of type `utf8` or a dictionary of `utf8`. Assume there
+    are no gaps hidden in null values in the buffer. (It's up to the caller to
+    prove this.)
+    """
+    _, offsets_buf, data_buf = chunk.buffers()
+
+    offsets = array.array("i")
+    assert offsets.itemsize == 4
+    offsets.frombytes(offsets_buf)
+    if sys.byteorder != "little":
+        offsets.byteswap()  # pyarrow is little-endian
+
+    offset0 = offsets[chunk.offset]
+    offsetN = offsets[chunk.offset + len(chunk)]  # len(offsets) == 1 + len(chunk)
+
+    b = data_buf[offset0:offsetN].to_pybytes()
+    return SCARY_BYTE_REGEX.search(b) is not None
+
+
 def _autocast_column(data: pyarrow.ChunkedArray) -> pyarrow.ChunkedArray:
     """
     Convert `data` to float64 or int(64|32|16|8); as fallback, return `data`.
@@ -252,7 +284,7 @@ def _autocast_column(data: pyarrow.ChunkedArray) -> pyarrow.ChunkedArray:
     in integer columns.
     """
     # All-empty (and all-null) columns stay text
-    for chunk in data.chunks:
+    for chunk in data.iterchunks():
         # https://arrow.apache.org/docs/format/Columnar.html#variable-size-binary-layout
         _, offsets_buf, _ = chunk.buffers()
         # If data has an offset, ignore what comes before
@@ -274,8 +306,15 @@ def _autocast_column(data: pyarrow.ChunkedArray) -> pyarrow.ChunkedArray:
 
     # Convert "" => null, so pyarrow cast() won't balk at it.
     sane = pyarrow.chunked_array(
-        [_nix_utf8_chunk_empty_strings(chunk) for chunk in data.chunks]
+        [_nix_utf8_chunk_empty_strings(chunk) for chunk in data.iterchunks()]
     )
+
+    for chunk in sane.iterchunks():
+        # pyarrow cast() uses double-conversion, so it parses "NaN" and "Inf"
+        # as doubles. Workbench doesn't support NaN or Inf, so don't convert to
+        # them.
+        if _utf8_chunk_may_contain_inf_or_nan(chunk):
+            return data
 
     try:
         numbers = sane.cast(pyarrow.float64())
