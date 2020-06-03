@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Pattern, Tuple
 
+import numpy as np
 import pyarrow
 
 from cjwmodule.i18n import I18nMessage
@@ -281,6 +282,16 @@ def _autocast_column(data: pyarrow.ChunkedArray) -> pyarrow.ChunkedArray:
     except pyarrow.ArrowInvalid:
         # Some string somewhere wasn't a number
         return data
+
+    # Test that there's no infinity. We'll use numpy. .to_numpy() with
+    # zero_copy_only=False will convert nulls to NaN. That's fine, since we
+    # know `numbers` has no NaN values (because `cast()` would have raised
+    # rather than return a NaN.)
+    for chunk in numbers.iterchunks():
+        npchunk = chunk.to_numpy(zero_copy_only=False)
+        if np.inf in npchunk or -np.inf in npchunk:
+            # Numbers too large
+            return data
 
     # Downcast integers, when possible.
     #
