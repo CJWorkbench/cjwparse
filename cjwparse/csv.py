@@ -60,15 +60,15 @@ _ERROR_PATTERNS = [
     ),
     ErrorPattern(
         re.compile(
-            r"^truncated (?P<n_values>\d+) values \(value byte limit is (?P<max_n_bytes_per_value>\d+); see row (?P<row_index>\d+) column (?P<column_index>\d+)\)$"
+            r"^truncated (?P<n_values>\d+) values \(value byte limit is (?P<max_n_bytes>\d+); see row (?P<row_index>\d+) column (?P<column_index>\d+)\)$"
         ),
         (
-            lambda n_values, max_n_bytes_per_value, row_index, column_index: _trans_cjwparse(
+            lambda n_values, max_n_bytes, row_index, column_index: _trans_cjwparse(
                 "warning.truncated_values",
                 "{n_values, plural, one{Truncated # value} other{Truncated # values}} (value byte limit is {max_n_bytes}; see row {row_number} column {column_number})",
                 dict(
                     n_values=int(n_values),
-                    max_n_bytes_per_value=int(max_n_bytes_per_value),
+                    max_n_bytes=int(max_n_bytes),
                     row_number=int(row_index) + 1,
                     column_number=int(column_index) + 1,
                 ),
