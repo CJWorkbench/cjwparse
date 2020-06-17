@@ -456,7 +456,7 @@ class ParseCsvInternalTests(unittest.TestCase):
                             "warning.truncated_values",
                             dict(
                                 n_values=7,
-                                max_n_bytes_per_value=4,
+                                max_n_bytes=4,
                                 row_number=1,
                                 column_number=1,
                             ),
