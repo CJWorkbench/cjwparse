@@ -1,5 +1,5 @@
 # We run everything in a Dockerfile so we can pull arrow-tools binaries
-FROM workbenchdata/arrow-tools:v0.0.11 as arrow-tools
+FROM workbenchdata/arrow-tools:v0.0.12 as arrow-tools
 
 FROM python:3.8.3-buster AS test
 
