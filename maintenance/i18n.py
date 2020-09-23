@@ -25,7 +25,7 @@ def _extract_python(
     fileobj: BytesIO, _keywords: Any, _comment_tags: Any, options: Dict[Any, Any]
 ) -> Generator[Tuple[int, str, List[Any], List[str]], None, None]:
     """Extract messages from project python code.
-    
+
     :param fileobj: the seekable, file-like object the messages should be
                     extracted from
     :param _keywords: Ignored
@@ -258,23 +258,36 @@ def assert_messages_are_same(message: Message, other_message: Message):
     )
     assert message.string == other_message.string or (
         not message.string and not other_message.string
-    ), (
-        "Messages with id %s have different string: %s, %s"
-        % (message.id, message.string, other_message.string)
+    ), "Messages with id %s have different string: %s, %s" % (
+        message.id,
+        message.string,
+        other_message.string,
     )
-    assert message.flags == other_message.flags, (
-        "Messages with id %s have different flags: %s, %s"
-        % (message.id, message.flags, other_message.flags)
+    assert (
+        message.flags == other_message.flags
+    ), "Messages with id %s have different flags: %s, %s" % (
+        message.id,
+        message.flags,
+        other_message.flags,
     )
-    assert message.auto_comments == other_message.auto_comments, (
-        "Messages with id %s have different auto_comments: %s, %s"
-        % (message.id, message.auto_comments, other_message.auto_comments)
+    assert (
+        message.auto_comments == other_message.auto_comments
+    ), "Messages with id %s have different auto_comments: %s, %s" % (
+        message.id,
+        message.auto_comments,
+        other_message.auto_comments,
     )
-    assert message.user_comments == other_message.user_comments, (
-        "Messages with id %s have different user_comments: %s, %s"
-        % (message.id, message.user_comments, other_message.user_comments)
+    assert (
+        message.user_comments == other_message.user_comments
+    ), "Messages with id %s have different user_comments: %s, %s" % (
+        message.id,
+        message.user_comments,
+        other_message.user_comments,
     )
-    assert message.locations == other_message.locations, (
-        "Messages with id %s have different locations: %s, %s"
-        % (message.id, message.locations, other_message.locations)
+    assert (
+        message.locations == other_message.locations
+    ), "Messages with id %s have different locations: %s, %s" % (
+        message.id,
+        message.locations,
+        other_message.locations,
     )

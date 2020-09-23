@@ -49,7 +49,7 @@ Developing
 1. Run tests: `docker build .`
 2. Write a failing unit test in `tests/`
 3. Make it pass by editing code in `cjwparse/`
-4. `black cjwparse tests && isort --recursive cjwparse tests`
+4. `black cjwparse maintenance tests && isort cjwparse maintenance tests && python3 ./setup.py extract_messages`
 5. Submit a pull request
 
 Be very, very, very careful to preserve a consistent API. Workbench will

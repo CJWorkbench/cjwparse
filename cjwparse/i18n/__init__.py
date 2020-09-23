@@ -17,7 +17,7 @@ def _trans_cjwparse(id: str, default: str, args: Dict[str, Any] = {}) -> I18nMes
 
         from cjwparse.i18n import _trans_cjwparse
 
-        except ApiException as err:  # some 
+        except ApiException as err:  # some
             return _trans_cjwparse(
                 "greatapi.exception.message",
                 "Something is wrong: {error}",

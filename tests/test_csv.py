@@ -132,7 +132,8 @@ class ParseCsvInternalTests(unittest.TestCase):
                 path, has_header=False, autoconvert_text_to_numbers=True
             )
             assert_csv_result_equals(
-                result, ParseCsvResult(pa.table({"Column 1": [big_number_str]}), []),
+                result,
+                ParseCsvResult(pa.table({"Column 1": [big_number_str]}), []),
             )
 
     def test_autoconvert_text_to_number_use_str_when_number_is_nan_or_inf(self):

@@ -1,3 +1,11 @@
+v1.0.0 - 2020-09-22
+-------------------
+
+* bump arrow-tools to Arrow 1.0
+
+This is a major version change because files written by Arrow 1 aren't
+always readable by Arrow 0.16.
+
 v0.0.8 - 2020-07-23
 -------------------
 

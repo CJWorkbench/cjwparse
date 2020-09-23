@@ -128,7 +128,7 @@ def _postprocess_name_columns(
     """
     if has_header and table.num_rows > 0:
         names, warnings = gen_unique_clean_colnames_and_warn(
-            list(("" if c[0] is pyarrow.NULL else c[0].as_py()) for c in table.columns),
+            list((c[0].as_py() if c[0].is_valid else "") for c in table.columns),
             settings=settings,
         )
 
