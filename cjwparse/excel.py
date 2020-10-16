@@ -8,6 +8,7 @@ from cjwmodule.i18n import I18nMessage
 from cjwmodule.util.colnames import gen_unique_clean_colnames_and_warn
 
 from ._util import tempfile_context
+from .i18n import _trans_cjwparse
 from .postprocess import dictionary_encode_columns
 from .settings import DEFAULT_SETTINGS, Settings
 
@@ -42,6 +43,17 @@ def _postprocess_table(
     else:
         warnings = []
     return table, warnings
+
+
+def _stderr_line_to_error(line: str) -> I18nMessage:
+    if line.startswith("Invalid XLSX file: "):
+        return _trans_cjwparse(
+            "excel.invalid_file",
+            "This Excel file is invalid. Open it in Microsoft Office and re-save it to correct errors. (Debugging message: “{message}”)",
+            {"message": line[len("Invalid XLSX file: ") :]},
+        )
+    else:
+        return I18nMessage("TODO_i18n", {"text": line}, None)
 
 
 def _parse_excel(
@@ -83,7 +95,7 @@ def _parse_excel(
             check=True,
         )
         parse_warnings = [
-            I18nMessage("TODO_i18n", {"text": line}, None)
+            _stderr_line_to_error(line)
             for line in child.stdout.decode("utf-8").split("\n")
             if line
         ]

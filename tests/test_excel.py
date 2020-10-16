@@ -69,11 +69,9 @@ class ParseExcelTests(unittest.TestCase):
             errors,
             [
                 I18nMessage(
-                    "TODO_i18n",
-                    {
-                        "text": "Invalid XLSX file: xlnt::exception : failed to find zip header"
-                    },
-                    None,
+                    "excel.invalid_file",
+                    {"message": "xlnt::exception : failed to find zip header"},
+                    "cjwparse",
                 )
             ],
         )
@@ -119,6 +117,23 @@ class ParseExcelTests(unittest.TestCase):
                     "util.colnames.warnings.default",
                     {"n_columns": 1, "first_colname": "Column 2"},
                     "cjwmodule",
+                )
+            ],
+        )
+
+    def test_xlsx_invalid_but_excel_can_repair_it(self):
+        path = TestDataPath / "excel-can-repair-this.xlsx"
+        table, errors = call_parse_xlsx(path, has_header=True)
+        assert_arrow_table_equals(table, {})
+        self.assertEqual(
+            errors,
+            [
+                I18nMessage(
+                    "excel.invalid_file",
+                    {
+                        "message": "xl/_rels/workbook.xml.rels:2:84: error: attribute 'Target' expected"
+                    },
+                    "cjwparse",
                 )
             ],
         )

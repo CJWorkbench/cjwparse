@@ -1,3 +1,11 @@
+v1.0.1 - 2020-10-16
+-------------------
+
+* On xlnt exception, show the user an error that suggests opening and re-saving
+  the file in Excel. (Many automated tools out there write invalid Excel files
+  that Microsoft Excel can open. Workbench is unlikely to achieve feature parity
+  with Microsoft Excel's file-repair subsystem.)
+
 v1.0.0 - 2020-09-22
 -------------------
 
