@@ -60,10 +60,10 @@ setup(
     packages=find_packages(
         exclude=["tests", "tests.*", "maintenance", "maintenance.*"]
     ),
-    install_requires=["cchardet~=2.1.5", "pyarrow~=1.0", "cjwmodule~=2.0"],
-    setup_requires=["pytest-runner~=5.2"] if needs_pytest else [],
+    install_requires=["cchardet~=2.1.5", "pyarrow>=1.0, <3.0", "cjwmodule>=2.0, <4.0"],
+    setup_requires=["pytest-runner~=6.0"] if needs_pytest else [],
     extras_require={
-        "tests": ["numpy", "pytest~=5.4.0", "pytest-asyncio~=0.14.0"],
+        "tests": ["numpy", "pytest~=6.0", "pytest-asyncio~=0.14.0"],
         "maintenance": ["babel~=2.8.0"],
     },
     cmdclass={"extract_messages": ExtractMessagesCommand},
