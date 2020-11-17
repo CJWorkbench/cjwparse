@@ -25,19 +25,10 @@ def _string_array_pylist_n_bytes(data: pyarrow.ChunkedArray) -> int:
 def _maybe_dictionary_encode_column(
     data: pyarrow.ChunkedArray, *, settings: Settings
 ) -> pyarrow.ChunkedArray:
-    if data.null_count == len(data):
+    if len(data) == 0 or data.null_count == len(data):
         return data
 
-    if data.chunk(0).offset > 0:
-        # https://issues.apache.org/jira/browse/ARROW-7266#
-        assert len(data.chunks) == 1
-        data_copy = pyarrow.chunked_array(
-            [pyarrow.serialize(data.chunk(0)).deserialize()]
-        )
-        encoded = data_copy.dictionary_encode()
-    else:
-        encoded = data.dictionary_encode()
-
+    encoded = data.dictionary_encode()
     new_cost = _string_array_pylist_n_bytes(encoded.chunk(0).dictionary)
 
     if new_cost > settings.MAX_DICTIONARY_PYLIST_N_BYTES:
