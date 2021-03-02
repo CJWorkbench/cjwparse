@@ -8,6 +8,14 @@ COPY --from=arrow-tools /usr/bin/json-to-arrow /usr/bin/json-to-arrow
 COPY --from=arrow-tools /usr/bin/xls-to-arrow /usr/bin/xls-to-arrow
 COPY --from=arrow-tools /usr/bin/xlsx-to-arrow /usr/bin/xlsx-to-arrow
 
+# Deps for building google-re2 (part of cjwmodule)
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y \
+      build-essential \
+      libre2-dev \
+      pybind11-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install black pyflakes isort
 
 # README is read by setup.py
