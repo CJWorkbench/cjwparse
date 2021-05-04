@@ -60,7 +60,7 @@ setup(
     packages=find_packages(
         exclude=["tests", "tests.*", "maintenance", "maintenance.*"]
     ),
-    install_requires=["cchardet~=2.1.7", "pyarrow>=1.0, <4.0", "cjwmodule>=4.0, <5.0"],
+    install_requires=["cchardet~=2.1.7", "pyarrow>=3.0, <5.0", "cjwmodule>=4.0, <5.0"],
     setup_requires=["pytest-runner~=6.0"] if needs_pytest else [],
     extras_require={
         "tests": ["numpy", "pytest~=6.0", "pytest-asyncio~=0.14.0"],
